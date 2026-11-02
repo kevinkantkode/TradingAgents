@@ -3,8 +3,10 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+import pytest
+
 from desk.cli import main
-from desk.data.prices import snapshot_text
+from desk.data.prices import session_timezone, snapshot_text
 
 
 def _bars(dates, closes):
@@ -65,3 +67,60 @@ def test_unsafe_ticker_does_not_call_the_vendor(monkeypatch):
     monkeypatch.setattr("desk.data.prices.fetch_daily", fetch)
     code = main(["snapshot", ".."])
     assert code == 1
+
+
+@pytest.mark.parametrize(
+    ("symbol", "expected_tz"),
+    [
+        ("600519.SS", "Asia/Shanghai"),
+        ("000001.SZ", "Asia/Shanghai"),
+        ("^HSI", "Asia/Hong_Kong"),
+        ("^N225", "Asia/Tokyo"),
+        ("^FTSE", "Europe/London"),
+        ("^GDAXI", "Europe/Berlin"),
+        ("^FCHI", "Europe/Paris"),
+        ("^STOXX50E", "Europe/Berlin"),
+        ("NVDA", "America/New_York"),
+        ("0700.HK", "Asia/Hong_Kong"),
+    ],
+)
+def test_session_timezone_matches_listing_exchange(symbol, expected_tz):
+    assert session_timezone(symbol) == expected_tz
+
+
+def test_shanghai_calendar_drops_today_before_new_york_rolls():
+    frame = _bars(["2026-11-01", "2026-11-02", "2026-11-03"], [10.0, 20.0, 999.0])
+    text = snapshot_text(
+        "600519.SS",
+        frame=frame,
+        now=datetime(2026, 11, 3, 9, tzinfo=ZoneInfo("Asia/Shanghai")),
+    )
+    assert text.splitlines()[0] == "SNAPSHOT 600519.SS 2026-11-02 20.00"
+    assert "999" not in text
+
+
+def _single_nvda_bar(*, close=100.0, volume=1000):
+    return pd.DataFrame({
+        "Date": pd.to_datetime(["2026-10-30"]),
+        "Open": [close],
+        "High": [close + 1],
+        "Low": [close - 1],
+        "Close": [close],
+        "Volume": [volume],
+    })
+
+
+@pytest.mark.parametrize(
+    "frame",
+    [
+        _single_nvda_bar(volume=float("nan")),
+        _single_nvda_bar(close=float("inf")),
+    ],
+)
+def test_non_finite_anchor_ohlcv_exits_1_without_marker(monkeypatch, capsys, frame):
+    monkeypatch.setattr("desk.data.prices.fetch_daily", lambda canonical: frame)
+    code = main(["snapshot", "NVDA"])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "SNAPSHOT" not in captured.out
+    assert captured.err

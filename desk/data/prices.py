@@ -31,10 +31,22 @@ def price_text(value: float) -> str:
 def session_timezone(canonical: str) -> str:
     if canonical.endswith(".HK"):
         return "Asia/Hong_Kong"
+    if canonical.endswith(".SS") or canonical.endswith(".SZ"):
+        return "Asia/Shanghai"
     if canonical.endswith(".T"):
         return "Asia/Tokyo"
     if canonical.endswith(".L"):
         return "Europe/London"
+    index_tz = {
+        "^HSI": "Asia/Hong_Kong",
+        "^N225": "Asia/Tokyo",
+        "^FTSE": "Europe/London",
+        "^GDAXI": "Europe/Berlin",
+        "^FCHI": "Europe/Paris",
+        "^STOXX50E": "Europe/Berlin",
+    }
+    if canonical in index_tz:
+        return index_tz[canonical]
     if canonical.endswith("-USD") or canonical.endswith("=X"):
         return "UTC"
     return "America/New_York"
@@ -81,6 +93,12 @@ def snapshot_text(ticker: str, *, frame: pd.DataFrame | None = None, now: dateti
         raise NoMarketDataError(f"no closed session for {canonical}")
     closed = closed.dropna(subset=["Close"]).sort_values("Date")
     latest = closed.iloc[-1]
+    for field in ("Open", "High", "Low", "Close", "Volume"):
+        value = latest[field]
+        if pd.isna(value):
+            raise NoMarketDataError(f"anchor row for {canonical} has non-finite {field}")
+        if not math.isfinite(float(value)):
+            raise NoMarketDataError(f"anchor row for {canonical} has non-finite {field}")
     anchor_date = pd.Timestamp(latest["Date"]).strftime("%Y-%m-%d")
     close = price_text(float(latest["Close"]))
     stock = wrap(closed.copy())
