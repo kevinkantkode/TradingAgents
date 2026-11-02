@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import NamedTuple
 
@@ -51,7 +51,7 @@ def append_record(ticker: str, rating: str, *, ledger: Path | None = None) -> di
     symbol, anchor_date, close = parse_snapshot_marker(text)
     row = {
         "id": str(uuid.uuid4()),
-        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "decided_at": datetime.now(UTC).isoformat(),
         "ticker": symbol,
         "rating": canonical_rating,
         "anchor_date": anchor_date,

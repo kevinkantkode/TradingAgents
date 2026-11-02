@@ -2,7 +2,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-
 import pytest
 
 from desk.cli import main

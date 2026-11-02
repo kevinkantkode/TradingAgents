@@ -1,7 +1,5 @@
 """Keep the desk ledger out of the developer's home directory."""
 
-from pathlib import Path
-
 import pytest
 
 

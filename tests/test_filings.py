@@ -3,7 +3,7 @@ import pytest
 import requests
 
 from desk.cli import main
-from desk.data.errors import VendorUnavailableError
+from desk.data.errors import DeskError, VendorUnavailableError
 from desk.data.filings import Statements, _latest_fact, filings_text
 
 
@@ -44,7 +44,7 @@ def test_both_sources_empty_exits_without_a_marker(monkeypatch, capsys):
 
 
 def test_filings_text_rejects_when_both_sources_are_empty():
-    with pytest.raises(Exception):
+    with pytest.raises(DeskError):
         filings_text("NVDA", sec=None, yahoo=None)
 
 
