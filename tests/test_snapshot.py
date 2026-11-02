@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from desk.cli import main
+from desk.data.errors import NoMarketDataError
 from desk.data.prices import session_timezone, snapshot_text
 
 
@@ -124,3 +125,11 @@ def test_non_finite_anchor_ohlcv_exits_1_without_marker(monkeypatch, capsys, fra
     assert code == 1
     assert "SNAPSHOT" not in captured.out
     assert captured.err
+
+
+def test_nan_close_on_last_closed_session_is_not_an_older_anchor():
+    frame = _bars(["2026-11-01", "2026-11-02"], [10.0, 20.0])
+    frame.loc[frame["Date"] == pd.Timestamp("2026-11-02"), "Close"] = float("nan")
+    now = datetime(2026, 11, 3, tzinfo=ZoneInfo("America/New_York"))
+    with pytest.raises(NoMarketDataError):
+        snapshot_text("NVDA", frame=frame, now=now)

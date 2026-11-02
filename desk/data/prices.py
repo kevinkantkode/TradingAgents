@@ -89,9 +89,9 @@ def snapshot_text(ticker: str, *, frame: pd.DataFrame | None = None, now: dateti
     if frame is None:
         frame = fetch_daily(canonical)
     closed = drop_open_session(frame, today)
-    if closed.empty or closed["Close"].dropna().empty:
+    if closed.empty:
         raise NoMarketDataError(f"no closed session for {canonical}")
-    closed = closed.dropna(subset=["Close"]).sort_values("Date")
+    closed = closed.sort_values("Date")
     latest = closed.iloc[-1]
     for field in ("Open", "High", "Low", "Close", "Volume"):
         value = latest[field]
@@ -99,6 +99,9 @@ def snapshot_text(ticker: str, *, frame: pd.DataFrame | None = None, now: dateti
             raise NoMarketDataError(f"anchor row for {canonical} has non-finite {field}")
         if not math.isfinite(float(value)):
             raise NoMarketDataError(f"anchor row for {canonical} has non-finite {field}")
+    closed = closed.dropna(subset=["Close"])
+    if closed.empty:
+        raise NoMarketDataError(f"no closed session for {canonical}")
     anchor_date = pd.Timestamp(latest["Date"]).strftime("%Y-%m-%d")
     close = price_text(float(latest["Close"]))
     stock = wrap(closed.copy())
