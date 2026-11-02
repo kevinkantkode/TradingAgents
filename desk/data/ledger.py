@@ -7,11 +7,12 @@ import uuid
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import NamedTuple
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 from desk.data.errors import DeskError
-from desk.data.prices import fetch_daily, snapshot_text
+from desk.data.prices import drop_open_session, fetch_daily, session_timezone, snapshot_text
 
 HORIZONS = (5, 21)
 
@@ -71,8 +72,16 @@ def append_record(ticker: str, rating: str, *, ledger: Path | None = None) -> di
     return row
 
 
-def closes_for(canonical: str) -> pd.Series:
+def closes_for(canonical: str, *, now: datetime | None = None) -> pd.Series:
     frame = fetch_daily(canonical)
+    tz = ZoneInfo(session_timezone(canonical))
+    moment = now or datetime.now(tz)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=tz)
+    today = moment.astimezone(tz).date()
+    frame = drop_open_session(frame, today)
+    if frame.empty:
+        return pd.Series(dtype=float)
     dates = pd.to_datetime(frame["Date"]).dt.date
     series = pd.Series(frame["Close"].astype(float).to_numpy(), index=list(dates))
     series = series[series > 0]
@@ -107,7 +116,7 @@ def _filled(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def score_ledger(*, ledger: Path | None = None) -> ScoreResult:
+def score_ledger(*, ledger: Path | None = None, now: datetime | None = None) -> ScoreResult:
     path = ledger or LEDGER
     if not path.exists():
         return ScoreResult("", 0, "")
@@ -118,8 +127,12 @@ def score_ledger(*, ledger: Path | None = None) -> ScoreResult:
         touched = False
         anchor = date.fromisoformat(row["anchor_date"])
         try:
-            stock = closes_for(row["ticker"])
-            spy = closes_for(row["benchmark"])
+            if now is None:
+                stock = closes_for(row["ticker"])
+                spy = closes_for(row["benchmark"])
+            else:
+                stock = closes_for(row["ticker"], now=now)
+                spy = closes_for(row["benchmark"], now=now)
         except DeskError as exc:
             stderr_lines.append(f"{row['ticker']} {row['id']}: {exc}")
             continue

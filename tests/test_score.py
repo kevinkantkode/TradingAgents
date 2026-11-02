@@ -1,10 +1,12 @@
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 from desk.cli import main
 from desk.data.errors import VendorUnavailableError
+from desk.data.ledger import score_ledger
 
 
 def _row(anchor=date(2026, 1, 2), close=100.0):
@@ -28,6 +30,62 @@ def _series(anchor: date, n: int, start: float, step: float):
 
 def _write(path, rows):
     path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+
+
+def _ohlcv_frame(dates, closes):
+    return pd.DataFrame({
+        "Date": pd.to_datetime(dates),
+        "Open": closes,
+        "High": [c + 1 for c in closes],
+        "Low": [c - 1 for c in closes],
+        "Close": closes,
+        "Volume": [1000] * len(closes),
+    })
+
+
+def test_open_session_is_not_the_nth_closed_bar(monkeypatch, tmp_path):
+    spy_dates = [
+        "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24",
+        "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31",
+        "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04",
+    ]
+    spy_closes = [400.0 + i for i in range(len(spy_dates))]
+    spy_frame = _ohlcv_frame(spy_dates, spy_closes)
+
+    nvda_frame = _ohlcv_frame(
+        ["2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02"],
+        [110.0, 111.0, 112.0, 113.0, 114.0],
+    )
+    sh_frame = _ohlcv_frame(
+        ["2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04"],
+        [210.0, 211.0, 212.0, 213.0, 214.0],
+    )
+    frames = {"NVDA": nvda_frame, "600519.SS": sh_frame, "SPY": spy_frame}
+
+    monkeypatch.setattr(
+        "desk.data.ledger.fetch_daily",
+        lambda canonical: frames[canonical],
+    )
+
+    ledger_nvda = tmp_path / "nvda.jsonl"
+    _write(ledger_nvda, [_row(anchor=date(2026, 10, 26), close=100.0)])
+    now_nvda = datetime(2026, 11, 2, 15, tzinfo=ZoneInfo("America/New_York"))
+    result = score_ledger(ledger=ledger_nvda, now=now_nvda)
+    assert result.code == 0
+    nvda_row = json.loads(ledger_nvda.read_text(encoding="utf-8").strip())
+    assert nvda_row["ret_5"] is None
+    assert nvda_row["exit_date_5"] is None
+
+    ledger_sh = tmp_path / "sh.jsonl"
+    sh_row = _row(anchor=date(2026, 10, 30), close=200.0)
+    sh_row["ticker"] = "600519.SS"
+    _write(ledger_sh, [sh_row])
+    now_sh = datetime(2026, 11, 4, 9, tzinfo=ZoneInfo("Asia/Shanghai"))
+    result_sh = score_ledger(ledger=ledger_sh, now=now_sh)
+    assert result_sh.code == 0
+    sh_saved = json.loads(ledger_sh.read_text(encoding="utf-8").strip())
+    assert sh_saved["ret_5"] is None
+    assert sh_saved["exit_date_5"] is None
 
 
 def test_five_sessions_fill_only_the_short_horizon(monkeypatch, tmp_path, capsys):
