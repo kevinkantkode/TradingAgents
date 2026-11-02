@@ -1,8 +1,10 @@
 import pandas as pd
 import pytest
+import requests
 
 from desk.cli import main
-from desk.data.filings import Statements, filings_text, redact_user_agent
+from desk.data.errors import VendorUnavailableError
+from desk.data.filings import Statements, _latest_fact, filings_text
 
 
 def _frame():
@@ -46,11 +48,84 @@ def test_filings_text_rejects_when_both_sources_are_empty():
         filings_text("NVDA", sec=None, yahoo=None)
 
 
-def test_sec_error_redacts_the_user_agent(monkeypatch):
-    monkeypatch.setenv("SEC_EDGAR_USER_AGENT", "Ada Lovelace ada@example.com")
-    blown = redact_user_agent("refused for Ada Lovelace ada@example.com")
-    assert "ada@example.com" not in blown
-    assert "Ada Lovelace" not in blown
+def test_sec_outage_with_empty_yahoo_reports_the_sec_error(monkeypatch, capsys):
+    def sec_timeout(canonical):
+        raise VendorUnavailableError("SEC request failed: timeout")
+
+    monkeypatch.setattr("desk.data.filings.fetch_sec", sec_timeout)
+    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: None)
+    code = main(["filings", "NVDA"])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "FILINGS" not in captured.out
+    assert "SEC request failed" in captured.err
+    assert "no statements" not in captured.err
+
+
+def test_latest_fact_prefers_quarter_over_ytd_at_same_end():
+    end = "2026-09-30"
+    us_gaap = {
+        "Revenues": {
+            "units": {
+                "USD": [
+                    {
+                        "fp": "Q3",
+                        "end": end,
+                        "start": "2026-01-01",
+                        "val": 900,
+                        "filed": "2026-10-01",
+                    },
+                    {
+                        "fp": "Q3",
+                        "end": end,
+                        "start": "2026-07-01",
+                        "val": 90,
+                        "filed": "2026-10-01",
+                    },
+                ]
+            }
+        }
+    }
+    frame = _latest_fact(us_gaap, ("Revenues",))
+    assert frame is not None
+    assert float(frame.iloc[0, 0]) == 90
+
+
+def test_sec_error_redacts_the_user_agent(monkeypatch, capsys):
+    ua = "DeskTestAgent desk-test@example.com"
+    monkeypatch.setenv("SEC_EDGAR_USER_AGENT", ua)
+    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: None)
+
+    class MappingResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"0": {"ticker": "NVDA", "cik_str": 1045810}}
+
+    class FactsResponse:
+        text = f"refused for {ua}"
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            raise requests.exceptions.JSONDecodeError("not json", self.text, 0)
+
+    def fake_get(url, **kwargs):
+        if "company_tickers" in url:
+            return MappingResponse()
+        if "companyfacts" in url:
+            return FactsResponse()
+        raise AssertionError(f"unexpected url {url}")
+
+    monkeypatch.setattr("desk.data.filings.requests.get", fake_get)
+    code = main(["filings", "NVDA"])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "FILINGS" not in captured.out
+    assert ua not in captured.err
+    assert captured.err
 
 
 def test_invalid_ticker_exits_without_calling_vendors(monkeypatch, capsys):

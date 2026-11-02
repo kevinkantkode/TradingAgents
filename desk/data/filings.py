@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import date
 
 import pandas as pd
 import requests
@@ -99,6 +100,7 @@ def fetch_sec(canonical: str) -> Statements | None:
     Returning a Statements object is enough for the command. Vintage reconstruction
     is not performed: the most recent reported quarter available today is the value.
     """
+    facts = None
     try:
         mapping = requests.get(
             "https://www.sec.gov/files/company_tickers.json",
@@ -119,19 +121,31 @@ def fetch_sec(canonical: str) -> Statements | None:
             timeout=30,
         )
         facts.raise_for_status()
-    except requests.RequestException as exc:
+        us_gaap = facts.json().get("facts", {}).get("us-gaap", {})
+        income = _latest_fact(us_gaap, ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"))
+        balance = _latest_fact(us_gaap, ("Assets",))
+        cash = _latest_fact(us_gaap, ("NetCashProvidedByUsedInOperatingActivities",))
+        if income is None and balance is None and cash is None:
+            return None
+        return Statements(income=income, balance=balance, cashflow=cash, period="quarterly")
+    except (requests.RequestException, KeyError, TypeError, AttributeError) as exc:
         body = ""
         response = getattr(exc, "response", None)
         if response is not None and response.text:
-            body = response.text[:500]
+            body = redact_user_agent(response.text[:500])
+        elif facts is not None and facts.text:
+            body = redact_user_agent(facts.text[:500])
         raise VendorUnavailableError(redact_user_agent(f"SEC request failed: {exc} {body}")) from exc
-    us_gaap = facts.json().get("facts", {}).get("us-gaap", {})
-    income = _latest_fact(us_gaap, ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"))
-    balance = _latest_fact(us_gaap, ("Assets",))
-    cash = _latest_fact(us_gaap, ("NetCashProvidedByUsedInOperatingActivities",))
-    if income is None and balance is None and cash is None:
-        return None
-    return Statements(income=income, balance=balance, cashflow=cash, period="quarterly")
+
+
+def _fact_span_days(row: dict) -> int:
+    start = row.get("start")
+    if not start:
+        return 0
+    try:
+        return (date.fromisoformat(row["end"]) - date.fromisoformat(start)).days
+    except (TypeError, ValueError, KeyError):
+        return 2**31
 
 
 def _latest_fact(us_gaap: dict, tags: tuple[str, ...]) -> pd.DataFrame | None:
@@ -141,7 +155,11 @@ def _latest_fact(us_gaap: dict, tags: tuple[str, ...]) -> pd.DataFrame | None:
         quarters = [row for row in rows if row.get("fp") in {"Q1", "Q2", "Q3", "Q4"} and "end" in row and "val" in row]
         if not quarters:
             continue
-        latest = max(quarters, key=lambda row: row["end"])
+        latest_end = max(row["end"] for row in quarters)
+        at_end = [row for row in quarters if row["end"] == latest_end]
+        min_span = min(_fact_span_days(row) for row in at_end)
+        shortest = [row for row in at_end if _fact_span_days(row) == min_span]
+        latest = max(shortest, key=lambda row: row.get("filed", ""))
         return pd.DataFrame({latest["end"]: [latest["val"]]}, index=[tag])
     return None
 
@@ -162,6 +180,8 @@ def load_filings(ticker: str) -> str:
         except VendorUnavailableError as exc:
             raise DeskError(redact_user_agent(str(sec_error or exc))) from exc
     if _prefer(sec, None) is None and _prefer(yahoo, None) is None:
+        if sec_error is not None:
+            raise DeskError(redact_user_agent(str(sec_error))) from sec_error
         raise DeskError(f"no statements for {canonical}")
     return filings_text(
         ticker,
