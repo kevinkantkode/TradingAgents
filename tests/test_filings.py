@@ -51,3 +51,16 @@ def test_sec_error_redacts_the_user_agent(monkeypatch):
     blown = redact_user_agent("refused for Ada Lovelace ada@example.com")
     assert "ada@example.com" not in blown
     assert "Ada Lovelace" not in blown
+
+
+def test_invalid_ticker_exits_without_calling_vendors(monkeypatch, capsys):
+    def vendor_must_not_run(*_args, **_kwargs):
+        raise AssertionError("vendor must not be called")
+
+    monkeypatch.setattr("desk.data.filings.fetch_sec", vendor_must_not_run)
+    monkeypatch.setattr("desk.data.filings.fetch_yahoo", vendor_must_not_run)
+    code = main(["filings", ".."])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "FILINGS" not in captured.out
+    assert captured.err

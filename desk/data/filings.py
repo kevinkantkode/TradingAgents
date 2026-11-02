@@ -48,8 +48,15 @@ def _render_frame(title: str, frame: pd.DataFrame) -> str:
     return f"## {title}\n\n" + frame.to_string()
 
 
+def _canonical(ticker: str) -> str:
+    try:
+        return resolve_ticker(ticker)
+    except ValueError as exc:
+        raise DeskError(str(exc)) from exc
+
+
 def filings_text(ticker: str, *, sec: Statements | None = None, yahoo: Statements | None = None) -> str:
-    canonical = resolve_ticker(ticker)
+    canonical = _canonical(ticker)
     chosen = _prefer(sec, None)
     source = "sec"
     if chosen is None:
@@ -140,7 +147,7 @@ def _latest_fact(us_gaap: dict, tags: tuple[str, ...]) -> pd.DataFrame | None:
 
 
 def load_filings(ticker: str) -> str:
-    canonical = resolve_ticker(ticker)
+    canonical = _canonical(ticker)
     sec = None
     try:
         sec = fetch_sec(canonical)
