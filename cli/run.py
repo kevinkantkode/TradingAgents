@@ -434,9 +434,7 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
     if asked:
         save = typer.prompt("Save report?", default="Y").strip().upper() in ("Y", "YES", "")
     if save:
-        # Under results_dir, not the working directory: in Docker the working
-        # directory is inside the container and the report goes with it, while
-        # results_dir is the mounted volume the rest of the run already writes to.
+        # Under results_dir (~/.tradingagents/logs), not the working directory.
         save_path = graph.default_report_path(ticker)
         if asked:   # someone at the prompt may pick another folder
             save_path = Path(typer.prompt(

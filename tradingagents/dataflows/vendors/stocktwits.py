@@ -22,13 +22,14 @@ import logging
 from datetime import datetime
 from urllib.request import Request, urlopen
 
+from tradingagents import __version__
 from tradingagents.dataflows.date_window import coverage_gap, in_window
 from tradingagents.dataflows.symbols import crypto_base
 
 logger = logging.getLogger(__name__)
 
 _API = "https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json"
-_UA = "tradingagents/0.2 (+https://github.com/TauricResearch/TradingAgents)"
+_UA = f"tradingagents/{__version__}"
 
 
 def _created_at(message) -> datetime | None:

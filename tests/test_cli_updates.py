@@ -246,7 +246,6 @@ def _dist(direct=None, installer="pip"):
 def test_the_upgrade_command_follows_the_install(tmp_path, monkeypatch):
     clone = tmp_path / "TradingAgents"
     (clone / ".git").mkdir(parents=True)
-    monkeypatch.delenv("TRADINGAGENTS_IN_DOCKER", raising=False)
     monkeypatch.setattr(updates.sys, "executable", "/venv/bin/python")
     url = clone.as_uri()
 
@@ -260,13 +259,10 @@ def test_the_upgrade_command_follows_the_install(tmp_path, monkeypatch):
 
 
 @pytest.mark.unit
-def test_no_command_is_guessed_without_a_clone(tmp_path, monkeypatch):
-    monkeypatch.delenv("TRADINGAGENTS_IN_DOCKER", raising=False)
+def test_no_command_is_guessed_without_a_clone(tmp_path):
     gone = (tmp_path / "deleted-clone").as_uri()
     assert updates.upgrade_command(_dist({"url": gone, "dir_info": {}})) is None
     assert updates.upgrade_command(_dist(None)) is None
-    monkeypatch.setenv("TRADINGAGENTS_IN_DOCKER", "1")
-    assert updates.upgrade_command(_dist(None)) == "git pull && docker compose build (on the host)"
 
 
 @pytest.mark.unit
@@ -317,7 +313,6 @@ def test_remote_text_cannot_carry_c1_or_direction_controls():
 @pytest.mark.unit
 @pytest.mark.skipif(os.name == "nt", reason="the upgrade commands are POSIX shell")
 def test_a_uv_git_install_is_upgraded_with_uv(monkeypatch):
-    monkeypatch.delenv("TRADINGAGENTS_IN_DOCKER", raising=False)
     monkeypatch.setattr(updates.sys, "executable", "/venv/bin/python")
     vcs = updates.upgrade_command(_dist({"url": "https://github.com/TauricResearch/TradingAgents.git",
                                          "vcs_info": {"vcs": "git"}}, installer="uv"))
@@ -326,7 +321,6 @@ def test_a_uv_git_install_is_upgraded_with_uv(monkeypatch):
 
 @pytest.mark.unit
 def test_no_command_is_offered_on_windows(monkeypatch):
-    monkeypatch.delenv("TRADINGAGENTS_IN_DOCKER", raising=False)
     monkeypatch.setattr(updates.os, "name", "nt")
     assert updates.upgrade_command(_dist({"url": "https://github.com/TauricResearch/TradingAgents.git",
                                           "vcs_info": {"vcs": "git"}})) is None

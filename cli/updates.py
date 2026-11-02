@@ -180,8 +180,6 @@ def messages(cache: dict, running: str, upgrade: Callable[[], str | None] = lamb
 
 def upgrade_command(dist=None) -> str | None:
     """The command that upgrades this install, from how pip or uv recorded it; None when unsure."""
-    if os.environ.get("TRADINGAGENTS_IN_DOCKER"):
-        return "git pull && docker compose build (on the host)"
     if os.name == "nt":                    # the commands below are POSIX shell
         return None
     try:
