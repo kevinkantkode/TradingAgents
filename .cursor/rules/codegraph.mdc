@@ -1,0 +1,23 @@
+---
+description: CodeGraph MCP usage (optional; enable codegraph in .cursor/mcp.json)
+alwaysApply: false
+---
+
+## CodeGraph
+
+Indexed knowledge graph of symbols and call structure (`.codegraph/` is local and gitignored). Enable MCP via [`.cursor/mcp.json`](.cursor/mcp.json).
+
+### MCP (Cursor)
+
+Use **`codegraph_explore`** as the primary tool — architecture questions, “where is X”, flows, or context before an edit. Pass symbol names, file names, or a short natural-language question. Treat returned source as already read; do not re-open those files unless the staleness banner says they are pending re-index.
+
+Use **grep/read** for literal strings (log messages, comments, exact text), not symbol structure.
+
+### CLI (humans / scripts)
+
+- Build or rebuild index: `codegraph init -y`
+- Health: `codegraph status`
+
+### No index yet
+
+If the server reports no index, ask whether to run `codegraph init -y` in the repo root.

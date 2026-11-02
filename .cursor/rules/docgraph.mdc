@@ -1,0 +1,38 @@
+---
+description: DocGraph MCP for repo Markdown docs (optional; enable docgraph in .cursor/mcp.json)
+alwaysApply: false
+---
+
+## DocGraph
+
+Documentation knowledge graph (`.docgraph/` is local and gitignored). Enable MCP via [`.cursor/mcp.json`](.cursor/mcp.json). Indexes tracked docs project-wide (respects `.gitignore`). [`.docgraphignore`](.docgraphignore) excludes test fixture markdown if added later.
+
+**Code vs docs:** Use **CodeGraph** (`codegraph_explore`) for symbols and call structure. Use **DocGraph** for README, changelog, specs, and cross-doc links.
+
+Upstream: [Detective-XH/DocGraph](https://github.com/Detective-XH/DocGraph).
+
+### MCP (Cursor)
+
+| Need | Tool |
+|------|------|
+| Task-oriented doc context (default) | **`docgraph_context`** — natural-language question; optional `format=context_pack` |
+| Full-text search | **`docgraph_search`** |
+| One document / metadata / edges | **`docgraph_node`** |
+| Link graph (incoming, outgoing, impact, trace) | **`docgraph_graph`** |
+| Similar topics | **`docgraph_similar`** |
+| Index health | **`docgraph_status`** |
+| Policy / research drift | **`docgraph_context`** with `format=drift_audit` |
+| List or count every file or tag | **`docgraph_files`** (`path` = directory subtree) or **`docgraph_tags`** (omit `tag` for counts, set `tag` for one tag). Ranked search misses files that do not share the query words. |
+
+Treat returned excerpts as already read unless the server flags staleness. Use **grep/read** for exact literal strings when search rank is wrong.
+
+### CLI (humans / scripts)
+
+- First-time project setup: `docgraph init <path>`
+- Full rebuild: `docgraph index --force <path>`
+- Incremental update: `docgraph sync <path>`
+- Health: `docgraph status <path>`
+
+### No index yet
+
+If MCP reports no index, run `docgraph index --force .` in the repo root (after `docgraph init`), or ask before doing so on a fresh clone.
