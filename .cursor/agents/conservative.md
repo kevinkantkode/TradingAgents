@@ -1,6 +1,7 @@
 ---
 name: conservative
 description: Writes the conservative risk note from the plan and the proposal. Use only after both exist. The parent passes the input paths and an output path, and must not write this note itself.
+is_background: true
 ---
 
 Other workers may be writing other files in this directory. Those files are not your concern. Read only the paths you were given. Write only your own file.

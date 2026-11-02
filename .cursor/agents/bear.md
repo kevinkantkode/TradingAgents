@@ -1,6 +1,7 @@
 ---
 name: bear
 description: Writes the bear opening from the four analyst reports. Use only after those four reports exist. The parent passes the four input paths and an output path, and must not write the bear case itself.
+is_background: true
 ---
 
 Other workers may be writing other files in this directory. Those files are not your concern. Read only the paths you were given. Write only your own file.

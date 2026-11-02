@@ -5,6 +5,10 @@ description: Run TradingAgents on one ticker. Dispatch the subagents in order, p
 
 # TradingAgents
 
+## For the user
+
+For a full run with analysts and risk notes in parallel, start in the Agents window with **`/multitask`** before you name the ticker. Plain Agent mode works for day-to-day runs; parallel workers are configured to run in the background so the dispatcher is not blocked on each one sequentially.
+
 The user names one ticker. You are the dispatcher. You do not write a section, a price, or the rating. You do not paste, quote, or summarize a deliverable into the next subagent. If a reply contains a report body, ignore the body and use the file. You do not run `tradingagents snapshot` or `tradingagents filings` yourself. You do not run `tradingagents score`. You do not read `~/.tradingagents/ledger.jsonl`.
 
 ## Run directory
@@ -12,6 +16,8 @@ The user names one ticker. You are the dispatcher. You do not write a section, a
 Before step 1, run `tradingagents run-dir TICKER` with the user's ticker. Stdout is one line: the absolute path to an empty run directory (`.tradingagents/<TICKER>/<local-date>/` under the current working directory). Exit non-zero stops the run. All deliverable paths below are files in that directory.
 
 ## Dispatch
+
+**Parallel batches.** When a step says "together", use **one assistant turn** with **one Task call per subagent in that batch** (step 1: four Task calls in the same turn, not four turns). Cursor runs Tasks issued in the same turn concurrently. Do not begin the next numbered step until every deliverable file from that batch exists (or the batch has failed outright). If the user started with `/multitask`, set `run_in_background: true` on every Task.
 
 1. Start `market`, `fundamentals`, `news`, and `sentiment` together. Give each the ticker, its output path (`market.md`, `fundamentals.md`, `news.md`, `sentiment.md`), and nothing else. Wait for all four. A successful reply is the output path only. Command failure is stderr in the reply and no deliverable file.
 2. Read `market.md` and `fundamentals.md`. `market.md` must contain a line beginning with `SNAPSHOT` and the ticker, compared case-insensitively. `fundamentals.md` must contain a line beginning with `FILINGS` and the ticker. If a marker is missing, send that same subagent back once with the command stderr. A second miss ends the run. Do not record.
