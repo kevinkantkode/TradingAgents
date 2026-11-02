@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from desk.data.errors import DeskError
+from desk.data.filings import load_filings
 from desk.data.prices import snapshot_text
 
 
@@ -13,6 +14,9 @@ def main(argv: list[str] | None = None) -> int:
     snap = sub.add_parser("snapshot")
     snap.add_argument("ticker")
     snap.set_defaults(func=_snapshot)
+    fil = sub.add_parser("filings")
+    fil.add_argument("ticker")
+    fil.set_defaults(func=_filings)
     args = parser.parse_args(argv)
     try:
         text = args.func(args)
@@ -25,6 +29,10 @@ def main(argv: list[str] | None = None) -> int:
 
 def _snapshot(args) -> str:
     return snapshot_text(args.ticker)
+
+
+def _filings(args) -> str:
+    return load_filings(args.ticker)
 
 
 if __name__ == "__main__":
