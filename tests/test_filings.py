@@ -172,20 +172,47 @@ def _three(frame, period="quarterly"):
     return Statements(income=frame, balance=frame, cashflow=frame, period=period)
 
 
-def test_yahoo_line_items_are_used_instead_of_sec_cells(monkeypatch):
-    def sec_must_not_run(canonical):
-        raise AssertionError("sec was called")
-
+def test_sec_facts_are_printed_under_the_yahoo_statements(monkeypatch):
     income = pd.DataFrame({"2026-09-30": [11.0], "2026-06-30": [10.0]}, index=["Gross Profit"])
-    quarterly = _three(income)
-    monkeypatch.setattr("desk.data.filings.fetch_sec", sec_must_not_run)
-    monkeypatch.setattr(
-        "desk.data.filings.fetch_yahoo",
-        lambda canonical: YahooFilings(quarterly, None, None),
+    sec = Statements(
+        income=pd.DataFrame({"2026-09-30": [90.0]}, index=["Revenues"]),
+        balance=pd.DataFrame({"2026-09-30": [5.0]}, index=["Assets"]),
+        cashflow=pd.DataFrame({"2026-09-30": [7.0]}, index=["OperatingCash"]),
+        period="quarterly",
     )
+    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
+    monkeypatch.setattr("desk.data.filings.fetch_sec", lambda canonical: sec)
     text = load_filings("NVDA")
     assert text.splitlines()[0] == "FILINGS NVDA quarterly yahoo"
+    assert text.index("Gross Profit") < text.index("## SEC company facts")
+    assert "Revenues" in text
+    assert "Assets" in text
+
+
+def test_a_non_filer_omits_the_sec_section(monkeypatch):
+    income = pd.DataFrame({"2026-09-30": [11.0]}, index=["Gross Profit"])
+    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
+    monkeypatch.setattr("desk.data.filings.fetch_sec", lambda canonical: None)
+    text = load_filings("GC=F")
     assert "Gross Profit" in text
+    assert "SEC company facts" not in text
+
+
+def test_sec_outage_keeps_the_yahoo_statements(monkeypatch, capsys):
+    income = pd.DataFrame({"2026-09-30": [11.0]}, index=["Gross Profit"])
+    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
+
+    def sec_timeout(canonical):
+        raise VendorUnavailableError("SEC request failed: timeout")
+
+    monkeypatch.setattr("desk.data.filings.fetch_sec", sec_timeout)
+    code = main(["filings", "NVDA"])
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out.splitlines()[0] == "FILINGS NVDA quarterly yahoo"
+    assert "Gross Profit" in captured.out
+    assert "SEC request failed: timeout" in captured.out
+    assert "FILINGS" not in captured.err
 
 
 def test_only_the_four_most_recent_quarter_columns_are_printed():

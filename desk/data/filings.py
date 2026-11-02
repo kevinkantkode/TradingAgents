@@ -115,6 +115,30 @@ def _canonical(ticker: str) -> str:
         raise DeskError(str(exc)) from exc
 
 
+def _sec_cross_check(sec: Statements | None) -> str | None:
+    if sec is None:
+        return None
+    labels = (
+        ("income", "Revenue"),
+        ("balance", "Assets"),
+        ("cashflow", "Operating cash flow"),
+    )
+    parts = ["## SEC company facts", ""]
+    found = False
+    for name, label in labels:
+        frame = getattr(sec, name)
+        if not _usable(frame):
+            continue
+        found = True
+        parts.append(f"### {label}")
+        parts.append("")
+        parts.append(frame.to_string())
+        parts.append("")
+    if not found:
+        return None
+    return "\n".join(parts).rstrip()
+
+
 def _statement_blocks(prefix: str, chosen: Statements) -> list[str]:
     return [
         _render_frame(f"{prefix}Income statement", chosen.income),
@@ -130,6 +154,7 @@ def filings_text(
     yahoo: Statements | None = None,
     annual: Statements | None = None,
     insider: pd.DataFrame | None = None,
+    sec_note: str | None = None,
 ) -> str:
     canonical = _canonical(ticker)
     yahoo_quarter = None
@@ -159,6 +184,12 @@ def filings_text(
         blocks.extend(_statement_blocks("Annual ", extra_annual))
     if insider is not None and not insider.empty:
         blocks.append("## Insider transactions\n\n" + _recent_insider(insider).to_string())
+    if source == "yahoo":
+        cross_check = _sec_cross_check(sec)
+        if cross_check:
+            blocks.append(cross_check)
+        elif sec_note:
+            blocks.append("## SEC company facts\n\n" + sec_note)
     body = "\n\n".join(blocks)
     return f"FILINGS {canonical} {chosen.period} {source}\n\n{body}"
 
@@ -284,12 +315,23 @@ def load_filings(ticker: str) -> str:
     except VendorUnavailableError as exc:
         pack = None
         yahoo_error = exc
-    if pack is not None:
-        return filings_text(ticker, yahoo=pack.quarterly, annual=pack.annual, insider=pack.insider)
+    sec = None
+    sec_error = None
     try:
         sec = fetch_sec(canonical)
     except VendorUnavailableError as exc:
-        raise DeskError(redact_user_agent(str(exc))) from exc
+        sec_error = exc
+    if pack is not None:
+        return filings_text(
+            ticker,
+            sec=sec,
+            yahoo=pack.quarterly,
+            annual=pack.annual,
+            insider=pack.insider,
+            sec_note=None if sec_error is None else redact_user_agent(str(sec_error)),
+        )
+    if sec_error is not None:
+        raise DeskError(redact_user_agent(str(sec_error))) from sec_error
     if _prefer(sec, None) is None:
         if yahoo_error is not None:
             raise DeskError(redact_user_agent(str(yahoo_error))) from yahoo_error

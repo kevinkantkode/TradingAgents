@@ -87,7 +87,7 @@ Exit 1 when the vendor returns no usable rows, or the request fails. No `SNAPSHO
 
 Prints the income statement, the balance sheet, and the cash flow. Yahoo supplies the line items: the four most recent quarterly columns, plus an annual column when that period is not already among the quarters. Insider transactions from the same Yahoo ticker are printed after the statements when that table is non-empty. This is whatever is reported today. It does not reconstruct what was public on an older date.
 
-SEC company facts are the fallback when Yahoo has no usable statements. A one-cell SEC fact does not replace a Yahoo statement. Stdout begins with one marker line:
+When Yahoo has statements, the latest SEC revenue, assets, and operating-cash-flow figures are printed under those tables. They do not replace the tables. SEC company facts replace the statements only when Yahoo has none. A SEC request failure leaves the Yahoo tables in place and records the failure in the output. Stdout begins with one marker line:
 
 ```text
 FILINGS NVDA quarterly sec

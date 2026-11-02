@@ -12,7 +12,7 @@ pip install -e ".[dev]"
 
 `desk snapshot TICKER` prints the last closed session, its indicators, and a `SNAPSHOT` line.
 
-`desk filings TICKER` prints the quarterly income statement, balance sheet, and cash flow from Yahoo, the recent columns of each, and insider transactions when Yahoo has them. An annual column is included when its period is not already in the quarters. SEC company facts are the fallback when Yahoo has no statements. The first line is `FILINGS`.
+`desk filings TICKER` prints Yahoo's quarterly income statement, balance sheet, and cash flow, the four most recent columns of each, and insider transactions when Yahoo has them. An annual column is included when its period is not already in the quarters. The same output includes the latest SEC revenue, assets, and operating-cash-flow figures when the company files. SEC replaces the statements only when Yahoo has none. The first line is `FILINGS`.
 
 `desk record TICKER RATING` appends one row to `~/.tradingagents/ledger.jsonl`. The rating is Buy, Overweight, Hold, Underweight, or Sell. The close comes from the snapshot the command runs itself.
 
