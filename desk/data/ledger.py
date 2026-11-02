@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
+
+import pandas as pd
 
 from desk.data.errors import DeskError
-from desk.data.prices import snapshot_text
+from desk.data.prices import fetch_daily, snapshot_text
+
+HORIZONS = (5, 21)
 
 LEDGER = Path.home() / ".tradingagents" / "ledger.jsonl"
 RATINGS = ("Buy", "Overweight", "Hold", "Underweight", "Sell")
@@ -64,3 +69,76 @@ def append_record(ticker: str, rating: str, *, ledger: Path | None = None) -> di
         existing += "\n"
     _write(path, existing + json.dumps(row) + "\n")
     return row
+
+
+def closes_for(canonical: str) -> pd.Series:
+    frame = fetch_daily(canonical)
+    dates = pd.to_datetime(frame["Date"]).dt.date
+    series = pd.Series(frame["Close"].astype(float).to_numpy(), index=list(dates))
+    series = series[series > 0]
+    return series.sort_index()
+
+
+def _nth_later(series: pd.Series, anchor: date, n: int):
+    later = [(day, float(price)) for day, price in series.items() if day > anchor]
+    if len(later) < n:
+        return None
+    return later[n - 1]
+
+
+def _spy_return(spy: pd.Series, anchor: date, exit_day: date) -> float | None:
+    before = [(day, price) for day, price in spy.items() if day <= anchor]
+    after = [(day, price) for day, price in spy.items() if day <= exit_day]
+    if not before or not after:
+        return None
+    start, end = before[-1][1], after[-1][1]
+    if start <= 0:
+        return None
+    return (end / start) - 1
+
+
+class ScoreResult(NamedTuple):
+    stdout: str
+    code: int
+    stderr: str
+
+
+def _filled(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def score_ledger(*, ledger: Path | None = None) -> ScoreResult:
+    path = ledger or LEDGER
+    if not path.exists():
+        return ScoreResult("", 0, "")
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    stdout_lines = []
+    stderr_lines = []
+    for row in rows:
+        touched = False
+        anchor = date.fromisoformat(row["anchor_date"])
+        try:
+            stock = closes_for(row["ticker"])
+            spy = closes_for(row["benchmark"])
+        except DeskError as exc:
+            stderr_lines.append(f"{row['ticker']} {row['id']}: {exc}")
+            continue
+        for n in HORIZONS:
+            key = f"ret_{n}"
+            if _filled(row.get(key)):
+                continue
+            found = _nth_later(stock, anchor, n)
+            if found is None:
+                continue
+            exit_day, exit_close = found
+            raw = (exit_close / float(row["anchor_close"])) - 1
+            row[key] = raw
+            row[f"exit_date_{n}"] = exit_day.isoformat()
+            bench = _spy_return(spy, anchor, exit_day)
+            row[f"alpha_{n}"] = None if bench is None else raw - bench
+            touched = True
+            stdout_lines.append(f"scored {row['id']} ret_{n}")
+        if not touched and not any(_filled(row.get(f"ret_{n}")) for n in HORIZONS):
+            stdout_lines.append(f"skipped {row['id']}")
+    _write(path, "".join(json.dumps(row) + "\n" for row in rows))
+    return ScoreResult("\n".join(stdout_lines), 1 if stderr_lines else 0, "\n".join(stderr_lines))
