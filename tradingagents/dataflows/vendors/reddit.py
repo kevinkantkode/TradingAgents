@@ -29,6 +29,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from tradingagents import __version__
 from tradingagents.dataflows.date_window import coverage_gap, in_window
 from tradingagents.dataflows.symbols import crypto_base
 
@@ -66,11 +67,9 @@ def _coverage_dates(posts) -> list:
 
 
 _RSS = "https://www.reddit.com/r/{sub}/search.rss?{qs}"
-# A descriptive, identified User-Agent (per Reddit's API etiquette). Reddit
-# blocks generic/anonymous tokens like bare "Mozilla/5.0" or "curl/…" but
-# serves this one on both endpoints; the RSS feed accepts it even when the
-# JSON search endpoint 403s, so no browser-spoofing is needed.
-_UA = "tradingagents/0.2 (+https://github.com/TauricResearch/TradingAgents)"
+# A descriptive User-Agent. Reddit blocks a bare browser or curl token.
+# The RSS search feed is the path that still answers.
+_UA = f"tradingagents/{__version__}"
 _ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
 
 # Default subreddits ordered roughly by signal density for ticker-specific
