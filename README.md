@@ -1,6 +1,6 @@
 # TradingAgents
 
-A research run from Cursor. Twelve subagents write the notes. Python prints the numbers and keeps the score.
+A research run from Cursor. Thirteen subagents write the notes. Python prints the numbers and keeps the score.
 
 ## Install
 

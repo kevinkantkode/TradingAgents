@@ -1,5 +1,6 @@
 ---
 name: trader
+model: grok-4.7[context=256k,reasoning_effort=medium,fast=false]
 description: Writes the trade proposal from the research plan and the market report. Use only after both exist. The parent passes the input paths and an output path, and must not write the proposal itself.
 ---
 

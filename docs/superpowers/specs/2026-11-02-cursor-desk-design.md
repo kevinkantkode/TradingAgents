@@ -6,7 +6,7 @@ This replaces the LangGraph runtime. The old package is not kept beside the new 
 
 ## What this is for
 
-The user names a ticker. Separate subagents write a market note, a fundamentals note, a news note, and a sentiment note. A bull and a bear each argue from those four notes without seeing each other. A research manager writes a plan. A trader writes a proposal. Three risk subagents answer the proposal. A portfolio manager emits one rating. Python records that rating against the last completed close, and later fills in what the price did after 5 and 21 trading days.
+The user names a ticker. Separate subagents write a market note, a fundamentals note, a news note, and a sentiment note. A bull and a bear each argue from those four notes without seeing each other. An omissions pass lists at most four dropped or misquoted facts. A research manager writes a plan. A trader writes a proposal. Three risk subagents answer the proposal. A portfolio manager emits one rating. Python records that rating against the last completed close, and later fills in what the price did after 5 and 21 trading days.
 
 The rating is a note. Nothing in this system places an order.
 
@@ -23,7 +23,7 @@ A later price does not revise the note. A gain after a week and a loss after a m
 
 ## Desk
 
-Workers are project subagents in `.cursor/agents/`. Each file is markdown with `name` and `description` frontmatter. The body is that worker's instructions. The description says when the parent may delegate to it, and that the parent must not answer in its place. No file sets a model.
+Workers are project subagents in `.cursor/agents/`. Each file is markdown with `name`, `description`, and `model` frontmatter. The body is that worker's instructions. The description says when the parent may delegate to it, and that the parent must not answer in its place. Which model each worker uses, and why, is [2026-11-03-model-selection.md](2026-11-03-model-selection.md).
 
 The parent procedure is `.cursor/skills/tradingagents/SKILL.md`. Invoking the skill on a ticker is the run. The skill is a dispatch list. It does not contain a view of any market.
 
@@ -42,7 +42,9 @@ The four analysts start together. The parent waits for all four.
 
 Bull and bear then start together. Each receives the four analyst file paths and nothing else. They do not receive each other's path. One opening each. There is no rebuttal round.
 
-`research-manager` receives `bull.md` and `bear.md` and writes `plan.md`. `trader` receives `plan.md` and `market.md` and writes the proposal, including entry, stop, and size only when it can state them from the market report. `aggressive`, `conservative`, and `neutral` start together. Each receives `plan.md` and `proposal.md`. `portfolio-manager` receives those five files and writes `rating.md`. It is the only subagent allowed to emit a rating, and the rating is one of Buy, Overweight, Hold, Underweight, Sell, as the first line of `rating.md`, spelled that way.
+`omissions` then reads the four analyst files plus `bull.md` and `bear.md`. It writes `omissions.md`: either the single line `NONE`, or one to four lines each starting with `OMISSION`, at most one per category. It does not pick a side. `research-manager` receives `bull.md`, `bear.md`, and `omissions.md`, and writes `plan.md`. An `OMISSION` line is unresolved. It cannot be a point for either side. If one would kill the winning case, the plan stands aside. The parent checks that every `OMISSION` line appears unchanged in `plan.md`. One miss is one retry. `omissions.md` is not passed to the trader, the risk notes, or the portfolio manager.
+
+`trader` receives `plan.md` and `market.md` and writes the proposal, including entry, stop, and size only when it can state them from the market report. `aggressive`, `conservative`, and `neutral` start together. Each receives `plan.md` and `proposal.md`. `portfolio-manager` receives those five files and writes `rating.md`. It is the only subagent allowed to emit a rating, and the rating is one of Buy, Overweight, Hold, Underweight, Sell, as the first line of `rating.md`, spelled that way.
 
 ### What the parent may do
 
@@ -297,4 +299,4 @@ Each file under `.cursor/agents/` states its input paths, its output path, the c
 
 ## Done
 
-A fresh install exposes the `tradingagents` console script. `tradingagents run-dir`, `tradingagents snapshot`, `tradingagents filings`, `tradingagents record`, and `tradingagents score` behave as specified, under the new tests, with no network. The twelve subagent files and the skill are in the tree. The deleted modules and the deleted tests are gone. `pytest` passes.
+A fresh install exposes the `tradingagents` console script. `tradingagents run-dir`, `tradingagents snapshot`, `tradingagents filings`, `tradingagents record`, and `tradingagents score` behave as specified, under the new tests, with no network. The subagent files and the skill are in the tree. The deleted modules and the deleted tests are gone. `pytest` passes.

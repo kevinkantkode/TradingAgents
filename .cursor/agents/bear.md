@@ -1,5 +1,6 @@
 ---
 name: bear
+model: grok-4.7[context=256k,reasoning_effort=medium,fast=false]
 description: Writes the bear opening from the four analyst reports. Use only after those four reports exist. The parent passes the four input paths and an output path, and must not write the bear case itself.
 is_background: true
 ---

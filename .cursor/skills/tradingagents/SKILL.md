@@ -23,8 +23,9 @@ Before step 1, run `tradingagents run-dir TICKER` with the user's ticker. Stdout
 2. Read `market.md` and `fundamentals.md`. `market.md` must contain a line beginning with `SNAPSHOT` and the ticker, compared case-insensitively. `fundamentals.md` must contain a line beginning with `FILINGS` and the ticker. If a marker is missing, send that same subagent back once with the command stderr. A second miss ends the run. Do not record.
 3. A subagent that errors outright ends the run. Do not ask another subagent to cover. Do not record.
 4. Start `bull` and `bear` together. Pass the four analyst paths only. Outputs `bull.md` and `bear.md`. Do not give either the other's path.
-5. Start `research-manager` with `bull.md` and `bear.md`. Output `plan.md`.
-6. Start `trader` with `plan.md` and `market.md`. Output `proposal.md`.
-7. Start `aggressive`, `conservative`, and `neutral` together. Pass `plan.md` and `proposal.md` to each. Outputs `aggressive.md`, `conservative.md`, `neutral.md`.
-8. Start `portfolio-manager` with `plan.md`, `proposal.md`, `aggressive.md`, `conservative.md`, and `neutral.md`. Output `rating.md`. Read the first line of `rating.md`. It must be exactly one of Buy, Overweight, Hold, Underweight, or Sell. Any other first line ends the run without a record. The chat reply is not the rating.
-9. Run `tradingagents record` with the ticker and that rating. Tell the user the rating and the run directory path. Do not recap the debate. Stop.
+5. Start `omissions` with the four analyst paths, `bull.md`, and `bear.md`. Output `omissions.md`. The file is either the single line `NONE`, or one to four lines each beginning with `OMISSION`. Any other shape: send `omissions` back once. A second miss ends the run. Do not record.
+6. Start `research-manager` with `bull.md`, `bear.md`, and `omissions.md`. Output `plan.md`. If `omissions.md` is not `NONE`, every `OMISSION` line must appear in `plan.md` unchanged. If one is missing, send `research-manager` back once and name the missing lines. A second miss ends the run. Do not record. Do not pass `omissions.md` to the trader, the risk notes, or the portfolio manager.
+7. Start `trader` with `plan.md` and `market.md`. Output `proposal.md`.
+8. Start `aggressive`, `conservative`, and `neutral` together. Pass `plan.md` and `proposal.md` to each. Outputs `aggressive.md`, `conservative.md`, `neutral.md`.
+9. Start `portfolio-manager` with `plan.md`, `proposal.md`, `aggressive.md`, `conservative.md`, and `neutral.md`. Output `rating.md`. Read the first line of `rating.md`. It must be exactly one of Buy, Overweight, Hold, Underweight, or Sell. Any other first line ends the run without a record. The chat reply is not the rating.
+10. Run `tradingagents record` with the ticker and that rating. Tell the user the rating and the run directory path. Do not recap the debate. Stop.

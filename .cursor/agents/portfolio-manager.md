@@ -1,5 +1,6 @@
 ---
 name: portfolio-manager
+model: grok-4.7[context=256k,reasoning_effort=high,fast=false]
 description: Emits the TradingAgents rating from the plan, the proposal, and the three risk notes. Use only after those five texts exist. The parent passes the input paths and an output path, and must not choose the rating itself.
 ---
 

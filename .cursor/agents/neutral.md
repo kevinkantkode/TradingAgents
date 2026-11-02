@@ -1,5 +1,6 @@
 ---
 name: neutral
+model: composer-2.5[fast=false]
 description: Writes the neutral risk note from the plan and the proposal. Use only after both exist. The parent passes the input paths and an output path, and must not write this note itself.
 is_background: true
 ---

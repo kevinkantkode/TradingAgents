@@ -15,6 +15,7 @@ EXPECTED_AGENTS = {
     "market.md",
     "neutral.md",
     "news.md",
+    "omissions.md",
     "portfolio-manager.md",
     "research-manager.md",
     "sentiment.md",
@@ -24,7 +25,7 @@ EXPECTED_AGENTS = {
 RATING_FORBIDDEN = "Buy, Overweight, Hold, Underweight, or Sell"
 
 
-def test_agent_directory_is_the_twelve_expected_files():
+def test_agent_directory_is_the_expected_files():
     found = {path.name for path in AGENTS.glob("*.md")}
     assert found == EXPECTED_AGENTS
 
@@ -71,6 +72,17 @@ def test_research_manager_does_not_run_cli_or_use_rating_words():
     text = (AGENTS / "research-manager.md").read_text(encoding="utf-8")
     assert "do not run `tradingagents`" in text
     assert "Do not use the words Buy, Overweight, Hold, Underweight, or Sell" in text
+    assert "OMISSION" in text
+    assert "You may not open the analyst reports" in text
+
+
+def test_omissions_agent_is_a_capped_diff():
+    text = (AGENTS / "omissions.md").read_text(encoding="utf-8")
+    assert "do not run `tradingagents`" in text
+    assert RATING_FORBIDDEN in text
+    assert "NONE" in text
+    assert "OMISSION" in text
+    assert "one to four lines" in text
 
 
 def test_tradingagents_skill_lists_analysts_record_and_score_rule():
@@ -80,5 +92,7 @@ def test_tradingagents_skill_lists_analysts_record_and_score_rule():
     assert "tradingagents run-dir" in text
     assert "tradingagents record" in text
     assert "You do not run `tradingagents score`" in text
+    assert "`omissions`" in text
+    assert "Do not pass `omissions.md`" in text
     for word in ("Buy", "Overweight", "Hold", "Underweight", "Sell"):
         assert word in text

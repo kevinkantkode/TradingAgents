@@ -1,5 +1,6 @@
 ---
 name: fundamentals
+model: grok-4.7[context=256k,reasoning_effort=low,fast=false]
 description: Writes the fundamentals section for one ticker from tradingagents filings. Use when the TradingAgents parent hands you a ticker, an output path, and nothing else. The parent must not write this file itself.
 is_background: true
 ---

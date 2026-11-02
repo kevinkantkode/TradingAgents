@@ -1,5 +1,6 @@
 ---
 name: news
+model: composer-2.5[fast=false]
 description: Writes the news section for one ticker from web search. Use when the TradingAgents parent hands you a ticker, an output path, and nothing else. The parent must not write this file itself.
 is_background: true
 ---
