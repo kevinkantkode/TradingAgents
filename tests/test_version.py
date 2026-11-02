@@ -1,4 +1,4 @@
-def test_desk_version_is_0_1_0():
-    import desk
+def test_version():
+    import tradingagents
 
-    assert desk.__version__ == "0.1.0"
+    assert tradingagents.__version__ == "0.1.0"

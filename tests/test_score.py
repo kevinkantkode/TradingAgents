@@ -5,9 +5,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import pytest
 
-from desk.cli import main
-from desk.data.errors import VendorUnavailableError
-from desk.data.ledger import score_ledger
+from tradingagents.cli import main
+from tradingagents.data.errors import VendorUnavailableError
+from tradingagents.data.ledger import score_ledger
 
 
 def _row(anchor=date(2026, 1, 2), close=100.0):
@@ -64,7 +64,7 @@ def test_open_session_is_not_the_nth_closed_bar(monkeypatch, tmp_path):
     frames = {"NVDA": nvda_frame, "600519.SS": sh_frame, "SPY": spy_frame}
 
     monkeypatch.setattr(
-        "desk.data.ledger.fetch_daily",
+        "tradingagents.data.ledger.fetch_daily",
         lambda canonical: frames[canonical],
     )
 
@@ -100,8 +100,8 @@ def test_five_sessions_fill_only_the_short_horizon(monkeypatch, tmp_path, capsys
     def closes_for(canonical):
         return stock if canonical == "NVDA" else spy
 
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
-    monkeypatch.setattr("desk.data.ledger.closes_for", closes_for)
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.closes_for", closes_for)
     assert main(["score"]) == 0
     saved = json.loads(ledger.read_text(encoding="utf-8"))
     assert saved["ret_5"] == (110 / 100) - 1
@@ -121,9 +121,9 @@ def test_second_run_does_not_change_a_filled_horizon(monkeypatch, tmp_path):
     row["alpha_5"] = 0.25
     row["exit_date_5"] = "2026-01-09"
     _write(ledger, [row])
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
     monkeypatch.setattr(
-        "desk.data.ledger.closes_for",
+        "tradingagents.data.ledger.closes_for",
         lambda canonical: _series(anchor, 21, 1, 1),
     )
     assert main(["score"]) == 0
@@ -136,8 +136,8 @@ def test_short_series_stays_empty_and_exits_0(monkeypatch, tmp_path):
     ledger = tmp_path / "ledger.jsonl"
     anchor = date(2026, 1, 2)
     _write(ledger, [_row(anchor)])
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
-    monkeypatch.setattr("desk.data.ledger.closes_for", lambda canonical: _series(anchor, 3, 10, 0))
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.closes_for", lambda canonical: _series(anchor, 3, 10, 0))
     assert main(["score"]) == 0
     saved = json.loads(ledger.read_text(encoding="utf-8"))
     assert saved["ret_5"] is None
@@ -151,14 +151,14 @@ def test_a_failed_fetch_of_a_sibling_does_not_drop_a_good_row(monkeypatch, tmp_p
     bad["id"] = "row-2"
     bad["ticker"] = "AAPL"
     _write(ledger, [good, bad])
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
 
     def closes_for(canonical):
         if canonical == "AAPL":
             raise VendorUnavailableError("down")
         return _series(anchor, 5, 110, 0)
 
-    monkeypatch.setattr("desk.data.ledger.closes_for", closes_for)
+    monkeypatch.setattr("tradingagents.data.ledger.closes_for", closes_for)
     assert main(["score"]) == 1
     rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
     by_id = {row["id"]: row for row in rows}
@@ -171,14 +171,14 @@ def test_missing_spy_cover_still_writes_the_raw_return(monkeypatch, tmp_path):
     ledger = tmp_path / "ledger.jsonl"
     anchor = date(2026, 1, 2)
     _write(ledger, [_row(anchor)])
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
 
     def closes_for(canonical):
         if canonical == "SPY":
             return pd.Series(dtype=float)
         return _series(anchor, 5, 110, 0)
 
-    monkeypatch.setattr("desk.data.ledger.closes_for", closes_for)
+    monkeypatch.setattr("tradingagents.data.ledger.closes_for", closes_for)
     assert main(["score"]) == 0
     saved = json.loads(ledger.read_text(encoding="utf-8"))
     assert saved["ret_5"] == (110 / 100) - 1
@@ -189,14 +189,14 @@ def test_spy_fetch_error_still_writes_the_raw_return(monkeypatch, tmp_path, caps
     ledger = tmp_path / "ledger.jsonl"
     anchor = date(2026, 1, 2)
     _write(ledger, [_row(anchor)])
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
 
     def closes_for(canonical):
         if canonical == "SPY":
             raise VendorUnavailableError("spy down")
         return _series(anchor, 5, 110, 0)
 
-    monkeypatch.setattr("desk.data.ledger.closes_for", closes_for)
+    monkeypatch.setattr("tradingagents.data.ledger.closes_for", closes_for)
     assert main(["score"]) == 1
     saved = json.loads(ledger.read_text(encoding="utf-8"))
     assert saved["ret_5"] == (110 / 100) - 1
@@ -213,7 +213,7 @@ def test_fifth_closed_session_skips_weekend(monkeypatch, tmp_path):
     ledger = tmp_path / "ledger.jsonl"
     row = _row(anchor=anchor, close=100.0)
     _write(ledger, [row])
-    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+    monkeypatch.setattr("tradingagents.data.ledger.LEDGER", ledger)
 
     nvda_dates = [
         "2026-03-06",
@@ -234,7 +234,7 @@ def test_fifth_closed_session_skips_weekend(monkeypatch, tmp_path):
             return nvda_frame
         raise AssertionError(f"unexpected ticker {canonical}")
 
-    monkeypatch.setattr("desk.data.ledger.fetch_daily", fetch)
+    monkeypatch.setattr("tradingagents.data.ledger.fetch_daily", fetch)
     now = datetime(2026, 3, 16, 12, tzinfo=ZoneInfo("America/New_York"))
     result = score_ledger(ledger=ledger, now=now)
     assert result.code == 0

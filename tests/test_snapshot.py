@@ -4,9 +4,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import pytest
 
-from desk.cli import main
-from desk.data.errors import NoMarketDataError
-from desk.data.prices import INDICATORS, session_timezone, snapshot_text
+from tradingagents.cli import main
+from tradingagents.data.errors import NoMarketDataError
+from tradingagents.data.prices import INDICATORS, session_timezone, snapshot_text
 
 
 def _bars(dates, closes):
@@ -40,7 +40,7 @@ def test_todays_partial_bar_is_not_the_anchor():
 
 
 def test_empty_series_exits_1_without_a_marker(monkeypatch, capsys):
-    monkeypatch.setattr("desk.data.prices.fetch_daily", lambda canonical: _bars([], []))
+    monkeypatch.setattr("tradingagents.data.prices.fetch_daily", lambda canonical: _bars([], []))
     code = main(["snapshot", "NVDA"])
     captured = capsys.readouterr()
     assert code == 1
@@ -55,7 +55,7 @@ def test_alias_is_the_symbol_the_vendor_is_asked(monkeypatch):
         seen["canonical"] = canonical
         return _bars(["2026-10-30"], [1900.0])
 
-    monkeypatch.setattr("desk.data.prices.fetch_daily", fetch)
+    monkeypatch.setattr("tradingagents.data.prices.fetch_daily", fetch)
     snapshot_text("XAUUSD+", now=datetime(2026, 11, 3, tzinfo=ZoneInfo("America/New_York")))
     assert seen["canonical"] == "GC=F"
 
@@ -64,7 +64,7 @@ def test_unsafe_ticker_does_not_call_the_vendor(monkeypatch):
     def fetch(canonical):
         raise AssertionError("vendor was called")
 
-    monkeypatch.setattr("desk.data.prices.fetch_daily", fetch)
+    monkeypatch.setattr("tradingagents.data.prices.fetch_daily", fetch)
     code = main(["snapshot", ".."])
     assert code == 1
 
@@ -118,7 +118,7 @@ def _single_nvda_bar(*, close=100.0, volume=1000):
     ],
 )
 def test_non_finite_anchor_ohlcv_exits_1_without_marker(monkeypatch, capsys, frame):
-    monkeypatch.setattr("desk.data.prices.fetch_daily", lambda canonical: frame)
+    monkeypatch.setattr("tradingagents.data.prices.fetch_daily", lambda canonical: frame)
     code = main(["snapshot", "NVDA"])
     captured = capsys.readouterr()
     assert code == 1

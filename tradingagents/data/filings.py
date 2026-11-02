@@ -10,9 +10,9 @@ import pandas as pd
 import requests
 import yfinance as yf
 
-from desk import __version__
-from desk.data.errors import DeskError, VendorUnavailableError
-from desk.data.symbols import resolve_ticker
+from tradingagents import __version__
+from tradingagents.data.errors import TradingAgentsError, VendorUnavailableError
+from tradingagents.data.symbols import resolve_ticker
 
 
 @dataclass
@@ -33,14 +33,14 @@ class YahooFilings:
 
 
 # ponytail: four statement columns and fifteen insider rows. Raise the caps
-# if a desk needs a longer history in the prompt.
+# if a run needs a longer history in the prompt.
 _STATEMENT_COLUMNS = 4
 _INSIDER_ROWS = 15
 
 
 def user_agent() -> str:
     configured = os.getenv("SEC_EDGAR_USER_AGENT", "").strip()
-    return configured or f"desk/{__version__} (contact@example.com)"
+    return configured or f"tradingagents/{__version__} (contact@example.com)"
 
 
 def redact_user_agent(text: str) -> str:
@@ -112,7 +112,7 @@ def _canonical(ticker: str) -> str:
     try:
         return resolve_ticker(ticker)
     except ValueError as exc:
-        raise DeskError(str(exc)) from exc
+        raise TradingAgentsError(str(exc)) from exc
 
 
 def _sec_cross_check(sec: Statements | None) -> str | None:
@@ -178,7 +178,7 @@ def filings_text(
         chosen = sec_chosen
         source = "sec"
     else:
-        raise DeskError(f"no statements for {canonical}")
+        raise TradingAgentsError(f"no statements for {canonical}")
     blocks = _statement_blocks("", chosen)
     if extra_annual is not None:
         blocks.extend(_statement_blocks("Annual ", extra_annual))
@@ -331,9 +331,9 @@ def load_filings(ticker: str) -> str:
             sec_note=None if sec_error is None else redact_user_agent(str(sec_error)),
         )
     if sec_error is not None:
-        raise DeskError(redact_user_agent(str(sec_error))) from sec_error
+        raise TradingAgentsError(redact_user_agent(str(sec_error))) from sec_error
     if _prefer(sec, None) is None:
         if yahoo_error is not None:
-            raise DeskError(redact_user_agent(str(yahoo_error))) from yahoo_error
-        raise DeskError(f"no statements for {canonical}")
+            raise TradingAgentsError(redact_user_agent(str(yahoo_error))) from yahoo_error
+        raise TradingAgentsError(f"no statements for {canonical}")
     return filings_text(ticker, sec=sec)

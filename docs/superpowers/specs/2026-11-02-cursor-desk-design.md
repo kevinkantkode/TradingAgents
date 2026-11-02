@@ -18,16 +18,16 @@ A later price does not revise the note. A gain after a week and a loss after a m
 - Running the desk as of a past date, look-ahead filters, and the backtest grid.
 - News, social, FRED, and Polymarket clients. Those subagents use Cursor web search.
 - Feeding a score, a reflection, or a past rating into a later run.
-- An HTML report. The note is the deliverable files under `.desk/<TICKER>/<YYYY-MM-DD>/` (local calendar date, gitignored). Same-day rerun deletes that directory first.
-- A compatibility shim for `tradingagents`, `TradingAgentsGraph`, or the `tradingagents` console script.
+- An HTML report. The note is the deliverable files under `.tradingagents/<TICKER>/<YYYY-MM-DD>/` (local calendar date, gitignored). Same-day rerun deletes that directory first.
+- A compatibility shim for the deleted LangGraph `TradingAgentsGraph` or the old interactive `cli` package.
 
 ## Desk
 
 Workers are project subagents in `.cursor/agents/`. Each file is markdown with `name` and `description` frontmatter. The body is that worker's instructions. The description says when the parent may delegate to it, and that the parent must not answer in its place. No file sets a model.
 
-The parent procedure is `.cursor/skills/desk/SKILL.md`. Invoking the skill on a ticker is the run. The skill is a dispatch list. It does not contain a view of any market.
+The parent procedure is `.cursor/skills/tradingagents/SKILL.md`. Invoking the skill on a ticker is the run. The skill is a dispatch list. It does not contain a view of any market.
 
-Before the first subagent, the parent runs `desk run-dir TICKER`. The command creates `.desk/<TICKER>/<YYYY-MM-DD>/` using the local calendar date, deletes that directory first when it already exists, and prints the absolute path on stdout. Each worker writes one file in that directory. The parent passes absolute paths. It does not paste report bodies into the next dispatch.
+Before the first subagent, the parent runs `tradingagents run-dir TICKER`. The command creates `.tradingagents/<TICKER>/<YYYY-MM-DD>/` using the local calendar date, deletes that directory first when it already exists, and prints the absolute path on stdout. Each worker writes one file in that directory. The parent passes absolute paths. It does not paste report bodies into the next dispatch.
 
 ### Order
 
@@ -35,10 +35,10 @@ The four analysts start together. The parent waits for all four.
 
 | Subagent | Inputs | Must include | Must not |
 |---|---|---|---|
-| `market` | Ticker | The `SNAPSHOT` line and the table from `desk snapshot` | Rate the trade, search for a price, type a close that is not in the table |
-| `fundamentals` | Ticker | The `FILINGS` line and the tables from `desk filings` | Rate the trade, substitute a searched figure for a statement line |
-| `news` | Ticker | Sources it actually opened | Call `desk`, invent a price, rate the trade |
-| `sentiment` | Ticker | Sources it actually opened | Call `desk`, invent a price, rate the trade |
+| `market` | Ticker | The `SNAPSHOT` line and the table from `tradingagents snapshot` | Rate the trade, search for a price, type a close that is not in the table |
+| `fundamentals` | Ticker | The `FILINGS` line and the tables from `tradingagents filings` | Rate the trade, substitute a searched figure for a statement line |
+| `news` | Ticker | Sources it actually opened | Call `tradingagents`, invent a price, rate the trade |
+| `sentiment` | Ticker | Sources it actually opened | Call `tradingagents`, invent a price, rate the trade |
 
 Bull and bear then start together. Each receives the four analyst file paths and nothing else. They do not receive each other's path. One opening each. There is no rebuttal round.
 
@@ -50,30 +50,30 @@ Bull and bear then start together. Each receives the four analyst file paths and
 - Pass the input and output paths for that step. A successful subagent reply is the output path only.
 - Read `market.md` and `fundamentals.md` and check that `market.md` contains the `SNAPSHOT <TICKER>` line and `fundamentals.md` contains the `FILINGS <TICKER>` line. Ticker is compared case-insensitively.
 - On a missing marker, send that same subagent back once, with the command's stderr. A second miss ends the desk.
-- Read the first line of `rating.md` after the portfolio manager finishes. After a valid rating, run `desk record <TICKER> <RATING>`.
+- Read the first line of `rating.md` after the portfolio manager finishes. After a valid rating, run `tradingagents record <TICKER> <RATING>`.
 
 ### What the parent must not do
 
 - Paste, quote, or summarize a deliverable into the next subagent.
 - Write or edit a section, a price, or the rating.
-- Run `desk snapshot` or `desk filings` itself to fill a hole.
+- Run `tradingagents snapshot` or `tradingagents filings` itself to fill a hole.
 - Ask a different subagent to cover a failed one.
-- Run `desk record` when any required report is missing or the rating is not one of the five words.
-- Run `desk score`, or pass a ledger row into any subagent.
+- Run `tradingagents record` when any required report is missing or the rating is not one of the five words.
+- Run `tradingagents score`, or pass a ledger row into any subagent.
 
 A subagent that errors outright ends the desk. Nothing is recorded.
 
 ## Commands
 
-The console script is `desk`, implemented with the standard-library argument parser. Five subcommands. Success prints to stdout and exits 0. Failure prints the reason to stderr, prints no success marker, and exits 1.
+The console script is `tradingagents`, implemented with the standard-library argument parser. Five subcommands. Success prints to stdout and exits 0. Failure prints the reason to stderr, prints no success marker, and exits 1.
 
 Every ticker is passed through `normalize_symbol` before a network request in snapshot and filings. `run-dir` validates with `safe_ticker_component` only. A ticker that fails `safe_ticker_component` is rejected before any network call or run directory is created.
 
-### `desk run-dir TICKER`
+### `tradingagents run-dir TICKER`
 
-Creates `.desk/<TICKER>/<YYYY-MM-DD>/` under the current working directory, using the local calendar date. If that directory already exists, it is deleted first, then recreated empty. Stdout is one line: the absolute path. Exit 1 when the ticker fails `safe_ticker_component`. No network.
+Creates `.tradingagents/<TICKER>/<YYYY-MM-DD>/` under the current working directory, using the local calendar date. If that directory already exists, it is deleted first, then recreated empty. Stdout is one line: the absolute path. Exit 1 when the ticker fails `safe_ticker_component`. No network.
 
-### `desk snapshot TICKER`
+### `tradingagents snapshot TICKER`
 
 Downloads daily OHLCV and computes a fixed indicator set in process: `close_10_ema`, `close_50_sma`, `close_200_sma`, `rsi`, `boll`, `boll_ub`, `boll_lb`, `macd`, `macds`, `macdh`, `atr`. One indicator that cannot be computed is printed `N/A` with the exception type. That does not fail the command. No rows at all does.
 
@@ -89,7 +89,7 @@ SNAPSHOT NVDA 2026-11-02 187.25
 
 Exit 1 when the vendor returns no usable rows, or the request fails. No `SNAPSHOT` line in that case.
 
-### `desk filings TICKER`
+### `tradingagents filings TICKER`
 
 Prints the income statement, the balance sheet, and the cash flow. Yahoo supplies the line items: the four most recent quarterly columns, plus an annual column when that period is not already among the quarters. Insider transactions from the same Yahoo ticker are printed after the statements when that table is non-empty. This is whatever is reported today. It does not reconstruct what was public on an older date.
 
@@ -106,9 +106,9 @@ Those four are the only marker lines. The marker says `quarterly` when a quarter
 
 Figures are printed with their units. A percent stays a percent. A ratio stays a ratio. Currency is the figure's own currency, including minor units such as GBp labeled as such rather than divided in secret.
 
-SEC requests send `SEC_EDGAR_USER_AGENT` when set, otherwise `desk/<version> (contact@example.com)`.
+SEC requests send `SEC_EDGAR_USER_AGENT` when set, otherwise `tradingagents/<version> (contact@example.com)`.
 
-### `desk record TICKER RATING`
+### `tradingagents record TICKER RATING`
 
 Appends one JSON object as a line to `~/.tradingagents/ledger.jsonl`, creating the directory if needed. The write is atomic: a temp file beside the ledger, then replace. A failed write leaves the previous ledger intact.
 
@@ -134,7 +134,7 @@ The object:
 
 Stdout is that object, pretty-printed. The command does not store the debate.
 
-### `desk score`
+### `tradingagents score`
 
 Reads the ledger and fills empty horizons whose window has since traded. It writes the file back atomically. It prints one line per row it touched, and a line per row it skipped, to stdout. It writes no prose and it does not call a model.
 
@@ -152,7 +152,7 @@ Running `score` twice does not change a field that is already a number.
 
 ## Package
 
-The installable project is `desk` at version `0.1.0`. `pyproject.toml` names the script `desk = desk.cli:main`. The description says it prints market snapshots, filings, and a decision ledger for a Cursor desk.
+The installable project is `tradingagents` at version `0.1.0`. `pyproject.toml` names the script `tradingagents = tradingagents.cli:main`. The description says it prints market snapshots, filings, and a decision ledger for TradingAgents in Cursor.
 
 Runtime dependencies are `pandas`, `yfinance`, `stockstats`, `requests`, and `pytz`. Dev dependencies stay `pytest`, `pytest-subtests`, and `ruff`.
 
@@ -190,7 +190,7 @@ Inside `tradingagents/dataflows/`, delete the vendors and helpers that no comman
 - `router.py`. Snapshot and filings call their vendors directly.
 - `config.py`. Nothing reads `DEFAULT_CONFIG`.
 
-Surviving data code moves under `desk/data/` and is imported as `desk`. The `tradingagents` package is removed, including `tradingagents/__init__.py`. Callers do not keep the old import paths.
+Surviving data code moves under `desk/data/` and is imported as `tradingagents`. The `tradingagents` package is removed, including `tradingagents/__init__.py`. Callers do not keep the old import paths.
 
 Code that moves, after the historical branches are cut out:
 
@@ -279,7 +279,7 @@ Delete each of these. Do not edit them into the new tests. Where a surviving beh
 | `tests/test_vendor_routing.py` | Delete. There is no vendor router. |
 | `tests/test_no_data_handling.py` | Delete. Covered by the empty-series and empty-filings cases. |
 | `tests/test_get_scrubbed.py` | Delete. The user-agent redaction case in `test_filings.py` replaces it. |
-| `tests/test_version.py` | Delete. Replace with one assertion that `desk.__version__` is `0.1.0`. |
+| `tests/test_version.py` | Delete. Replace with one assertion that `tradingagents.__version__` is `0.1.0`. |
 | `tests/test_layering.py` | Delete. Replace with one assertion that `yfinance` and `requests` are imported only under `desk/data/`. |
 | `tests/test_suite_isolation.py` | Delete. The new conftest's temp ledger is the isolation guarantee, asserted by `test_record.py` writing only inside that directory. |
 
@@ -291,10 +291,10 @@ After the refactor, `pytest` collects only the new files. A leftover test that i
 
 ## Subagent files
 
-Each file under `.cursor/agents/` states its input paths, its output path, the command it must run when applicable, the marker it must quote, and the actions forbidden in the table above. Workers write deliverables to the path the parent names and read only the paths they were given. The market and fundamentals files include the exact command line. The news and sentiment files say web search is their source and `desk` is not. The portfolio-manager file lists the five ratings on the first line of `rating.md` and says any other word is a failed report. None of the files tell the worker to read `~/.tradingagents/ledger.jsonl`.
+Each file under `.cursor/agents/` states its input paths, its output path, the command it must run when applicable, the marker it must quote, and the actions forbidden in the table above. Workers write deliverables to the path the parent names and read only the paths they were given. The market and fundamentals files include the exact command line. The news and sentiment files say web search is their source and `tradingagents` is not. The portfolio-manager file lists the five ratings on the first line of `rating.md` and says any other word is a failed report. None of the files tell the worker to read `~/.tradingagents/ledger.jsonl`.
 
-`.cursor/skills/desk/SKILL.md` lists the run directory, the file map, the dispatch order, path handoff, file-based marker and rating checks, the one retry, and the `desk record` call. It tells the parent to stop without recording when a second marker check fails.
+`.cursor/skills/tradingagents/SKILL.md` lists the run directory, the file map, the dispatch order, path handoff, file-based marker and rating checks, the one retry, and the `tradingagents record` call. It tells the parent to stop without recording when a second marker check fails.
 
 ## Done
 
-A fresh install exposes `desk` and not `tradingagents`. `desk run-dir`, `desk snapshot`, `desk filings`, `desk record`, and `desk score` behave as specified, under the new tests, with no network. The twelve subagent files and the skill are in the tree. The deleted modules and the deleted tests are gone. `pytest` passes.
+A fresh install exposes the `tradingagents` console script. `tradingagents run-dir`, `tradingagents snapshot`, `tradingagents filings`, `tradingagents record`, and `tradingagents score` behave as specified, under the new tests, with no network. The twelve subagent files and the skill are in the tree. The deleted modules and the deleted tests are gone. `pytest` passes.

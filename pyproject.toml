@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "desk"
+name = "tradingagents"
 version = "0.1.0"
-description = "Market snapshots, filings, and a decision ledger for a Cursor desk."
+description = "Market snapshots, filings, and a decision ledger for TradingAgents in Cursor."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -24,10 +24,10 @@ dev = [
 ]
 
 [project.scripts]
-desk = "desk.cli:main"
+tradingagents = "tradingagents.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["desk*"]
+include = ["tradingagents*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

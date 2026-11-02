@@ -1,15 +1,15 @@
 ---
-name: desk
-description: Run the research desk on one ticker. Dispatch the subagents in order, pass deliverable paths only, and record the portfolio manager's rating from rating.md.
+name: tradingagents
+description: Run TradingAgents on one ticker. Dispatch the subagents in order, pass deliverable paths only, and record the portfolio manager's rating from rating.md.
 ---
 
-# Desk
+# TradingAgents
 
-The user names one ticker. You are the dispatcher. You do not write a section, a price, or the rating. You do not paste, quote, or summarize a deliverable into the next subagent. If a reply contains a report body, ignore the body and use the file. You do not run `desk snapshot` or `desk filings` yourself. You do not run `desk score`. You do not read `~/.tradingagents/ledger.jsonl`.
+The user names one ticker. You are the dispatcher. You do not write a section, a price, or the rating. You do not paste, quote, or summarize a deliverable into the next subagent. If a reply contains a report body, ignore the body and use the file. You do not run `tradingagents snapshot` or `tradingagents filings` yourself. You do not run `tradingagents score`. You do not read `~/.tradingagents/ledger.jsonl`.
 
 ## Run directory
 
-Before step 1, run `desk run-dir TICKER` with the user's ticker. Stdout is one line: the absolute path to an empty run directory (`.desk/<TICKER>/<local-date>/` under the current working directory). Exit non-zero stops the run. All deliverable paths below are files in that directory.
+Before step 1, run `tradingagents run-dir TICKER` with the user's ticker. Stdout is one line: the absolute path to an empty run directory (`.tradingagents/<TICKER>/<local-date>/` under the current working directory). Exit non-zero stops the run. All deliverable paths below are files in that directory.
 
 ## Dispatch
 
@@ -21,4 +21,4 @@ Before step 1, run `desk run-dir TICKER` with the user's ticker. Stdout is one l
 6. Start `trader` with `plan.md` and `market.md`. Output `proposal.md`.
 7. Start `aggressive`, `conservative`, and `neutral` together. Pass `plan.md` and `proposal.md` to each. Outputs `aggressive.md`, `conservative.md`, `neutral.md`.
 8. Start `portfolio-manager` with `plan.md`, `proposal.md`, `aggressive.md`, `conservative.md`, and `neutral.md`. Output `rating.md`. Read the first line of `rating.md`. It must be exactly one of Buy, Overweight, Hold, Underweight, or Sell. Any other first line ends the run without a record. The chat reply is not the rating.
-9. Run `desk record` with the ticker and that rating. Tell the user the rating and the run directory path. Do not recap the debate. Stop.
+9. Run `tradingagents record` with the ticker and that rating. Tell the user the rating and the run directory path. Do not recap the debate. Stop.

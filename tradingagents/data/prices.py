@@ -10,8 +10,8 @@ import pandas as pd
 import yfinance as yf
 from stockstats import StockDataFrame
 
-from desk.data.errors import DeskError, NoMarketDataError, VendorUnavailableError
-from desk.data.symbols import resolve_ticker
+from tradingagents.data.errors import TradingAgentsError, NoMarketDataError, VendorUnavailableError
+from tradingagents.data.symbols import resolve_ticker
 
 INDICATORS = (
     "close_10_ema", "close_50_sma", "close_200_sma",
@@ -94,7 +94,7 @@ def snapshot_text(ticker: str, *, frame: pd.DataFrame | None = None, now: dateti
     try:
         canonical = resolve_ticker(ticker)
     except ValueError as exc:
-        raise DeskError(str(exc)) from exc
+        raise TradingAgentsError(str(exc)) from exc
     tz = ZoneInfo(session_timezone(canonical))
     moment = now or datetime.now(tz)
     if moment.tzinfo is None:

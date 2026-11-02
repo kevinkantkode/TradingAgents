@@ -2,9 +2,9 @@ import pandas as pd
 import pytest
 import requests
 
-from desk.cli import main
-from desk.data.errors import DeskError, VendorUnavailableError
-from desk.data.filings import Statements, YahooFilings, _latest_fact, filings_text, load_filings
+from tradingagents.cli import main
+from tradingagents.data.errors import TradingAgentsError, VendorUnavailableError
+from tradingagents.data.filings import Statements, YahooFilings, _latest_fact, filings_text, load_filings
 
 
 def _frame():
@@ -34,8 +34,8 @@ def test_annual_when_quarterly_is_empty():
 
 
 def test_both_sources_empty_exits_without_a_marker(monkeypatch, capsys):
-    monkeypatch.setattr("desk.data.filings.fetch_sec", lambda canonical: None)
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: None)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_sec", lambda canonical: None)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", lambda canonical: None)
     code = main(["filings", "NVDA"])
     captured = capsys.readouterr()
     assert code == 1
@@ -44,7 +44,7 @@ def test_both_sources_empty_exits_without_a_marker(monkeypatch, capsys):
 
 
 def test_filings_text_rejects_when_both_sources_are_empty():
-    with pytest.raises(DeskError):
+    with pytest.raises(TradingAgentsError):
         filings_text("NVDA", sec=None, yahoo=None)
 
 
@@ -52,8 +52,8 @@ def test_sec_outage_with_empty_yahoo_reports_the_sec_error(monkeypatch, capsys):
     def sec_timeout(canonical):
         raise VendorUnavailableError("SEC request failed: timeout")
 
-    monkeypatch.setattr("desk.data.filings.fetch_sec", sec_timeout)
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: None)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_sec", sec_timeout)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", lambda canonical: None)
     code = main(["filings", "NVDA"])
     captured = capsys.readouterr()
     assert code == 1
@@ -134,7 +134,7 @@ def test_instant_facts_follow_the_latest_filing():
 def test_sec_error_redacts_the_user_agent(monkeypatch, capsys):
     ua = "DeskTestAgent desk-test@example.com"
     monkeypatch.setenv("SEC_EDGAR_USER_AGENT", ua)
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: None)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", lambda canonical: None)
 
     class MappingResponse:
         def raise_for_status(self):
@@ -159,7 +159,7 @@ def test_sec_error_redacts_the_user_agent(monkeypatch, capsys):
             return FactsResponse()
         raise AssertionError(f"unexpected url {url}")
 
-    monkeypatch.setattr("desk.data.filings.requests.get", fake_get)
+    monkeypatch.setattr("tradingagents.data.filings.requests.get", fake_get)
     code = main(["filings", "NVDA"])
     captured = capsys.readouterr()
     assert code == 1
@@ -180,8 +180,8 @@ def test_sec_facts_are_printed_under_the_yahoo_statements(monkeypatch):
         cashflow=pd.DataFrame({"2026-09-30": [7.0]}, index=["OperatingCash"]),
         period="quarterly",
     )
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
-    monkeypatch.setattr("desk.data.filings.fetch_sec", lambda canonical: sec)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
+    monkeypatch.setattr("tradingagents.data.filings.fetch_sec", lambda canonical: sec)
     text = load_filings("NVDA")
     assert text.splitlines()[0] == "FILINGS NVDA quarterly yahoo"
     assert text.index("Gross Profit") < text.index("## SEC company facts")
@@ -191,8 +191,8 @@ def test_sec_facts_are_printed_under_the_yahoo_statements(monkeypatch):
 
 def test_a_non_filer_omits_the_sec_section(monkeypatch):
     income = pd.DataFrame({"2026-09-30": [11.0]}, index=["Gross Profit"])
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
-    monkeypatch.setattr("desk.data.filings.fetch_sec", lambda canonical: None)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
+    monkeypatch.setattr("tradingagents.data.filings.fetch_sec", lambda canonical: None)
     text = load_filings("GC=F")
     assert "Gross Profit" in text
     assert "SEC company facts" not in text
@@ -200,12 +200,12 @@ def test_a_non_filer_omits_the_sec_section(monkeypatch):
 
 def test_sec_outage_keeps_the_yahoo_statements(monkeypatch, capsys):
     income = pd.DataFrame({"2026-09-30": [11.0]}, index=["Gross Profit"])
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", lambda canonical: YahooFilings(_three(income), None, None))
 
     def sec_timeout(canonical):
         raise VendorUnavailableError("SEC request failed: timeout")
 
-    monkeypatch.setattr("desk.data.filings.fetch_sec", sec_timeout)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_sec", sec_timeout)
     code = main(["filings", "NVDA"])
     captured = capsys.readouterr()
     assert code == 0
@@ -264,8 +264,8 @@ def test_invalid_ticker_exits_without_calling_vendors(monkeypatch, capsys):
     def vendor_must_not_run(*_args, **_kwargs):
         raise AssertionError("vendor must not be called")
 
-    monkeypatch.setattr("desk.data.filings.fetch_sec", vendor_must_not_run)
-    monkeypatch.setattr("desk.data.filings.fetch_yahoo", vendor_must_not_run)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_sec", vendor_must_not_run)
+    monkeypatch.setattr("tradingagents.data.filings.fetch_yahoo", vendor_must_not_run)
     code = main(["filings", ".."])
     captured = capsys.readouterr()
     assert code == 1

@@ -1,8 +1,8 @@
 from datetime import date
 from pathlib import Path
 
-from desk.cli import main
-from desk.data.rundir import prepare_run_dir, ticker_path_segment
+from tradingagents.cli import main
+from tradingagents.data.rundir import prepare_run_dir, ticker_path_segment
 
 
 def test_ticker_path_segment_uppercases_ascii_letters_only():
@@ -11,7 +11,7 @@ def test_ticker_path_segment_uppercases_ascii_letters_only():
 
 
 def test_prepare_run_dir_creates_and_wipes(tmp_path):
-    stale = tmp_path / ".desk" / "NVDA" / date.today().isoformat()
+    stale = tmp_path / ".tradingagents" / "NVDA" / date.today().isoformat()
     stale.mkdir(parents=True)
     (stale / "bull.md").write_text("old", encoding="utf-8")
 
@@ -27,7 +27,7 @@ def test_run_dir_cli_prints_absolute_path(tmp_path, monkeypatch, capsys):
     code = main(["run-dir", "NVDA"])
     assert code == 0
     line = capsys.readouterr().out.strip()
-    assert line == str((tmp_path / ".desk" / "NVDA" / date.today().isoformat()).resolve())
+    assert line == str((tmp_path / ".tradingagents" / "NVDA" / date.today().isoformat()).resolve())
 
 
 def test_run_dir_rejects_unsafe_ticker():

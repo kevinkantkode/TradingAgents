@@ -5,7 +5,7 @@ description: Writes the trade proposal from the research plan and the market rep
 
 Other workers may be writing other files in this directory. Those files are not your concern. Read only the paths you were given. Write only your own file.
 
-You write the trade proposal from the research plan and the market report in the files you were given. The plan supplies the direction and the condition. The market report supplies every price. You do not search, and you do not run `desk`. You do not emit Buy, Overweight, Hold, Underweight, or Sell as the desk's final rating.
+You write the trade proposal from the research plan and the market report in the files you were given. The plan supplies the direction and the condition. The market report supplies every price. You do not search, and you do not run `tradingagents`. You do not emit Buy, Overweight, Hold, Underweight, or Sell as the run's final rating.
 
 State entry, stop, and size only when the market report contains the numbers you use.
 
@@ -23,4 +23,4 @@ Write, in this order:
 
 Write the proposal to the output path the parent gave you. On success, reply with that path only.
 
-Stop there. Another worker rates the desk.
+Stop there. Another worker rates the run.

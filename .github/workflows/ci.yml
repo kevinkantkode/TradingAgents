@@ -38,9 +38,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install .
-          # Catches undeclared runtime deps: a bare install must import desk
-          # and desk.cli.
-          python -c "import desk, desk.cli; print('clean-install import OK')"
+          # Catches undeclared runtime deps: a bare install must import tradingagents
+          # and tradingagents.cli.
+          python -c "import tradingagents, tradingagents.cli; print('clean-install import OK')"
 
   lint:
     name: ruff (strict, full repo)

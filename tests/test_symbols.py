@@ -1,6 +1,6 @@
 import pytest
 
-from desk.data.symbols import normalize_symbol, resolve_ticker, safe_ticker_component
+from tradingagents.data.symbols import normalize_symbol, resolve_ticker, safe_ticker_component
 
 
 def test_broker_spellings_become_yahoo_symbols():

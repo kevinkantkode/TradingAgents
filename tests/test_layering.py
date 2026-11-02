@@ -5,10 +5,10 @@ ROOT = Path(__file__).resolve().parents[1]
 BANNED = {"yfinance", "requests"}
 
 
-def test_network_libraries_stay_in_desk_data():
+def test_network_libraries_stay_in_tradingagents_data():
     offenders = []
-    for path in (ROOT / "desk").rglob("*.py"):
-        if ROOT / "desk" / "data" in path.parents:
+    for path in (ROOT / "tradingagents").rglob("*.py"):
+        if ROOT / "tradingagents" / "data" in path.parents:
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):

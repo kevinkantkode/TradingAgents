@@ -1,4 +1,4 @@
-"""Decision ledger. Scores are filled later and never sent back to a desk."""
+"""Decision ledger. Scores are filled later and never sent back to a later run."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from desk.data.errors import DeskError
-from desk.data.prices import drop_open_session, fetch_daily, session_timezone, snapshot_text
+from tradingagents.data.errors import TradingAgentsError
+from tradingagents.data.prices import drop_open_session, fetch_daily, session_timezone, snapshot_text
 
 HORIZONS = (5, 21)
 
@@ -24,7 +24,7 @@ def parse_rating(text: str) -> str:
     match = {name.lower(): name for name in RATINGS}
     found = match.get(text.strip().lower())
     if found is None:
-        raise DeskError(f"rating must be one of {', '.join(RATINGS)}")
+        raise TradingAgentsError(f"rating must be one of {', '.join(RATINGS)}")
     return found
 
 
@@ -32,9 +32,9 @@ def parse_snapshot_marker(text: str) -> tuple[str, str, float]:
     try:
         kind, ticker, anchor_date, close = text.splitlines()[0].split()
     except (IndexError, ValueError) as exc:
-        raise DeskError("snapshot did not start with a SNAPSHOT line") from exc
+        raise TradingAgentsError("snapshot did not start with a SNAPSHOT line") from exc
     if kind != "SNAPSHOT":
-        raise DeskError("snapshot did not start with a SNAPSHOT line")
+        raise TradingAgentsError("snapshot did not start with a SNAPSHOT line")
     return ticker, anchor_date, float(close)
 
 
@@ -134,13 +134,13 @@ def score_ledger(*, ledger: Path | None = None, now: datetime | None = None) -> 
         anchor = date.fromisoformat(row["anchor_date"])
         try:
             stock = _series_for(row["ticker"])
-        except DeskError as exc:
+        except TradingAgentsError as exc:
             stderr_lines.append(f"{row['ticker']} {row['id']}: {exc}")
             continue
         spy_error = None
         try:
             spy = _series_for(row["benchmark"])
-        except DeskError as exc:
+        except TradingAgentsError as exc:
             spy = None
             spy_error = exc
         for n in HORIZONS:

@@ -1,18 +1,18 @@
-"""The desk command."""
+"""The tradingagents command."""
 
 import argparse
 import json
 import sys
 
-from desk.data.errors import DeskError
-from desk.data.filings import load_filings
-from desk.data.ledger import ScoreResult, append_record, score_ledger
-from desk.data.prices import snapshot_text
-from desk.data.rundir import prepare_run_dir
+from tradingagents.data.errors import TradingAgentsError
+from tradingagents.data.filings import load_filings
+from tradingagents.data.ledger import ScoreResult, append_record, score_ledger
+from tradingagents.data.prices import snapshot_text
+from tradingagents.data.rundir import prepare_run_dir
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="desk")
+    parser = argparse.ArgumentParser(prog="tradingagents")
     sub = parser.add_subparsers(dest="command", required=True)
     snap = sub.add_parser("snapshot")
     snap.add_argument("ticker")
@@ -28,14 +28,14 @@ def main(argv: list[str] | None = None) -> int:
     scr.set_defaults(func=_score)
     run = sub.add_parser(
         "run-dir",
-        help="create an empty .desk/<TICKER>/<local-date>/ run directory",
+        help="create an empty .tradingagents/<TICKER>/<local-date>/ run directory",
     )
     run.add_argument("ticker")
     run.set_defaults(func=_run_dir)
     args = parser.parse_args(argv)
     try:
         result = args.func(args)
-    except DeskError as exc:
+    except TradingAgentsError as exc:
         print(exc, file=sys.stderr)
         return 1
     if isinstance(result, ScoreResult):
