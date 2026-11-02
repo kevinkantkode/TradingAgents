@@ -85,9 +85,9 @@ Exit 1 when the vendor returns no usable rows, or the request fails. No `SNAPSHO
 
 ### `desk filings TICKER`
 
-Prints the latest reported quarter of the income statement, the balance sheet, and the cash flow. This is whatever is the current statement today. It does not reconstruct what was public on an older date.
+Prints the income statement, the balance sheet, and the cash flow. Yahoo supplies the line items: the four most recent quarterly columns, plus an annual column when that period is not already among the quarters. Insider transactions from the same Yahoo ticker are printed after the statements when that table is non-empty. This is whatever is reported today. It does not reconstruct what was public on an older date.
 
-US filers come from SEC EDGAR. A ticker SEC does not cover, or an SEC failure, falls through to Yahoo's quarterly financials. Stdout begins with one marker line:
+SEC company facts are the fallback when Yahoo has no usable statements. A one-cell SEC fact does not replace a Yahoo statement. Stdout begins with one marker line:
 
 ```text
 FILINGS NVDA quarterly sec
@@ -96,7 +96,7 @@ FILINGS NVDA annual sec
 FILINGS NVDA annual yahoo
 ```
 
-Those four are the only marker lines. `quarterly` is the latest reported quarter. `annual` is used only when that source's quarterly frames are empty and its annual frames are not. SEC is tried first. Yahoo is tried when SEC produces no statement. Exit 1 only when both sources produce no statement. No `FILINGS` line in that case.
+Those four are the only marker lines. The marker says `quarterly` when a quarterly statement is printed, and `annual` when only the annual statement is. `yahoo` is the source when Yahoo supplied the tables. `sec` is the source only for the fallback. Exit 1 only when both sources produce no statement. No `FILINGS` line in that case.
 
 Figures are printed with their units. A percent stays a percent. A ratio stays a ratio. Currency is the figure's own currency, including minor units such as GBp labeled as such rather than divided in secret.
 

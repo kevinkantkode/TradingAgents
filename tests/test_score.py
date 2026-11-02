@@ -182,3 +182,25 @@ def test_missing_spy_cover_still_writes_the_raw_return(monkeypatch, tmp_path):
     saved = json.loads(ledger.read_text(encoding="utf-8"))
     assert saved["ret_5"] == (110 / 100) - 1
     assert saved["alpha_5"] is None
+
+
+def test_spy_fetch_error_still_writes_the_raw_return(monkeypatch, tmp_path, capsys):
+    ledger = tmp_path / "ledger.jsonl"
+    anchor = date(2026, 1, 2)
+    _write(ledger, [_row(anchor)])
+    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+
+    def closes_for(canonical):
+        if canonical == "SPY":
+            raise VendorUnavailableError("spy down")
+        return _series(anchor, 5, 110, 0)
+
+    monkeypatch.setattr("desk.data.ledger.closes_for", closes_for)
+    assert main(["score"]) == 1
+    saved = json.loads(ledger.read_text(encoding="utf-8"))
+    assert saved["ret_5"] == (110 / 100) - 1
+    assert saved["exit_date_5"] == (anchor + timedelta(days=5)).isoformat()
+    assert saved["alpha_5"] is None
+    err = capsys.readouterr().err
+    assert "ret_5" in err
+    assert "spy down" in err

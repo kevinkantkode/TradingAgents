@@ -123,19 +123,26 @@ def score_ledger(*, ledger: Path | None = None, now: datetime | None = None) -> 
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     stdout_lines = []
     stderr_lines = []
+
+    def _series_for(canonical: str) -> pd.Series:
+        if now is None:
+            return closes_for(canonical)
+        return closes_for(canonical, now=now)
+
     for row in rows:
         touched = False
         anchor = date.fromisoformat(row["anchor_date"])
         try:
-            if now is None:
-                stock = closes_for(row["ticker"])
-                spy = closes_for(row["benchmark"])
-            else:
-                stock = closes_for(row["ticker"], now=now)
-                spy = closes_for(row["benchmark"], now=now)
+            stock = _series_for(row["ticker"])
         except DeskError as exc:
             stderr_lines.append(f"{row['ticker']} {row['id']}: {exc}")
             continue
+        spy_error = None
+        try:
+            spy = _series_for(row["benchmark"])
+        except DeskError as exc:
+            spy = None
+            spy_error = exc
         for n in HORIZONS:
             key = f"ret_{n}"
             if _filled(row.get(key)):
@@ -147,10 +154,12 @@ def score_ledger(*, ledger: Path | None = None, now: datetime | None = None) -> 
             raw = (exit_close / float(row["anchor_close"])) - 1
             row[key] = raw
             row[f"exit_date_{n}"] = exit_day.isoformat()
-            bench = _spy_return(spy, anchor, exit_day)
+            bench = None if spy is None else _spy_return(spy, anchor, exit_day)
             row[f"alpha_{n}"] = None if bench is None else raw - bench
             touched = True
             stdout_lines.append(f"scored {row['id']} ret_{n}")
+            if spy_error is not None:
+                stderr_lines.append(f"{row['ticker']} {row['id']} ret_{n}: {spy_error}")
         if not touched and not any(_filled(row.get(f"ret_{n}")) for n in HORIZONS):
             stdout_lines.append(f"skipped {row['id']}")
     _write(path, "".join(json.dumps(row) + "\n" for row in rows))
