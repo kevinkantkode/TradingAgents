@@ -77,6 +77,7 @@ def test_desk_skill_lists_analysts_record_and_score_rule():
     text = SKILL.read_text(encoding="utf-8")
     for name in ("market", "fundamentals", "news", "sentiment"):
         assert f"`{name}`" in text
+    assert "desk run-dir" in text
     assert "desk record" in text
     assert "You do not run `desk score`" in text
     for word in ("Buy", "Overweight", "Hold", "Underweight", "Sell"):

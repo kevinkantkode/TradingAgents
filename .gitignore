@@ -226,3 +226,6 @@ reports/
 .codegraph/*
 !.codegraph/.gitignore
 .docgraph/
+
+# Cursor desk run deliverables (local-date folders under .desk/<TICKER>/)
+.desk/

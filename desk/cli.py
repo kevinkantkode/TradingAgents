@@ -8,6 +8,7 @@ from desk.data.errors import DeskError
 from desk.data.filings import load_filings
 from desk.data.ledger import ScoreResult, append_record, score_ledger
 from desk.data.prices import snapshot_text
+from desk.data.rundir import prepare_run_dir
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,6 +26,12 @@ def main(argv: list[str] | None = None) -> int:
     rec.set_defaults(func=_record)
     scr = sub.add_parser("score")
     scr.set_defaults(func=_score)
+    run = sub.add_parser(
+        "run-dir",
+        help="create an empty .desk/<TICKER>/<local-date>/ run directory",
+    )
+    run.add_argument("ticker")
+    run.set_defaults(func=_run_dir)
     args = parser.parse_args(argv)
     try:
         result = args.func(args)
@@ -55,6 +62,10 @@ def _record(args) -> str:
 
 def _score(args) -> ScoreResult:
     return score_ledger()
+
+
+def _run_dir(args) -> str:
+    return str(prepare_run_dir(args.ticker))
 
 
 if __name__ == "__main__":

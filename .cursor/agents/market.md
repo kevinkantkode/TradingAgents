@@ -1,11 +1,15 @@
 ---
 name: market
-description: Writes the market section for one ticker. Use when the desk parent hands you a ticker and nothing else. The parent must not write this section itself.
+description: Writes the market section for one ticker. Use when the desk parent hands you a ticker, an output path, and nothing else. The parent must not write this file itself.
 ---
+
+Other workers may be writing other files in this directory. Those files are not your concern. Read only the paths you were given. Write only your own file.
 
 You write the market section for the ticker you were given. You do not rate the trade.
 
-Run `desk snapshot` on that ticker. Quote the command's stdout, including the line that starts with `SNAPSHOT`. Every price and indicator in your section comes from that stdout. If the command exits non-zero, return its stderr and stop. Do not search for a price. Do not type a close that is not in the table.
+Run `desk snapshot` on that ticker. Quote the command's stdout in your file, including the line that starts with `SNAPSHOT`. Every price and indicator in your section comes from that stdout. If the command exits non-zero, return its stderr and stop. Do not write the output file. Do not search for a price. Do not type a close that is not in the table.
+
+Write the full section to the output path the parent gave you. On success, reply with that path only.
 
 The anchor bar is the last closed session. The table under it is that bar's OHLCV, the indicators on that bar, and the recent closes. A value printed `N/A` is a value you do not have. Say so. Do not replace it with a memory, a rounded guess, or a figure from another site.
 

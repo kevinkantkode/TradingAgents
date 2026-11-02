@@ -10,6 +10,8 @@ pip install -e ".[dev]"
 
 ## Commands
 
+`desk run-dir TICKER` creates an empty `.desk/<TICKER>/<local-date>/` run folder and prints its absolute path. A same-day rerun wipes that folder first.
+
 `desk snapshot TICKER` prints the last closed session, its indicators, and a `SNAPSHOT` line.
 
 `desk filings TICKER` prints Yahoo's quarterly income statement, balance sheet, and cash flow, the four most recent columns of each, and insider transactions when Yahoo has them. An annual column is included when its period is not already in the quarters. The same output includes the latest SEC revenue, assets, and operating-cash-flow figures when the company files. SEC replaces the statements only when Yahoo has none. The first line is `FILINGS`.
@@ -22,4 +24,4 @@ Set `SEC_EDGAR_USER_AGENT` to a name and email before `desk filings` calls SEC. 
 
 ## Run a desk
 
-Invoke the `desk` skill with a ticker. The parent only starts subagents and pastes their text through. It does not write the rating. Scores are not shown to the next run.
+Invoke the `desk` skill with a ticker. The parent only starts subagents and passes deliverable paths under `.desk/<TICKER>/<date>/`. It does not write the rating. Scores are not shown to the next run.

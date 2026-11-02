@@ -1,6 +1,6 @@
 # Cursor desk
 
-A research desk run from Cursor. Twelve subagents do the talking. A parent agent only starts them, pastes their text through unchanged, and checks two markers. Python prints prices, statements, and a score. It does not call a model.
+A research desk run from Cursor. Twelve subagents do the talking. A parent agent only starts them, passes deliverable paths between steps, and checks two markers and the rating line in those files. Python prints prices, statements, and a score. It does not call a model.
 
 This replaces the LangGraph runtime. The old package is not kept beside the new one.
 
@@ -18,7 +18,7 @@ A later price does not revise the note. A gain after a week and a loss after a m
 - Running the desk as of a past date, look-ahead filters, and the backtest grid.
 - News, social, FRED, and Polymarket clients. Those subagents use Cursor web search.
 - Feeding a score, a reflection, or a past rating into a later run.
-- An HTML report. The note is the subagent text in the Cursor session.
+- An HTML report. The note is the deliverable files under `.desk/<TICKER>/<YYYY-MM-DD>/` (local calendar date, gitignored). Same-day rerun deletes that directory first.
 - A compatibility shim for `tradingagents`, `TradingAgentsGraph`, or the `tradingagents` console script.
 
 ## Desk
@@ -26,6 +26,8 @@ A later price does not revise the note. A gain after a week and a loss after a m
 Workers are project subagents in `.cursor/agents/`. Each file is markdown with `name` and `description` frontmatter. The body is that worker's instructions. The description says when the parent may delegate to it, and that the parent must not answer in its place. No file sets a model.
 
 The parent procedure is `.cursor/skills/desk/SKILL.md`. Invoking the skill on a ticker is the run. The skill is a dispatch list. It does not contain a view of any market.
+
+Before the first subagent, the parent runs `desk run-dir TICKER`. The command creates `.desk/<TICKER>/<YYYY-MM-DD>/` using the local calendar date, deletes that directory first when it already exists, and prints the absolute path on stdout. Each worker writes one file in that directory. The parent passes absolute paths. It does not paste report bodies into the next dispatch.
 
 ### Order
 
@@ -38,34 +40,38 @@ The four analysts start together. The parent waits for all four.
 | `news` | Ticker | Sources it actually opened | Call `desk`, invent a price, rate the trade |
 | `sentiment` | Ticker | Sources it actually opened | Call `desk`, invent a price, rate the trade |
 
-Bull and bear then start together. Each receives the four reports verbatim and nothing else. They do not see each other. One opening each. There is no rebuttal round.
+Bull and bear then start together. Each receives the four analyst file paths and nothing else. They do not receive each other's path. One opening each. There is no rebuttal round.
 
-`research-manager` receives both openings and writes the plan. `trader` receives the plan and writes the proposal, including entry, stop, and size only when it can state them from the market report. `aggressive`, `conservative`, and `neutral` start together. Each receives the plan and the proposal. `portfolio-manager` receives the plan, the proposal, and the three risk notes. It is the only subagent allowed to emit a rating, and the rating is one of Buy, Overweight, Hold, Underweight, Sell, on its own line, spelled that way.
+`research-manager` receives `bull.md` and `bear.md` and writes `plan.md`. `trader` receives `plan.md` and `market.md` and writes the proposal, including entry, stop, and size only when it can state them from the market report. `aggressive`, `conservative`, and `neutral` start together. Each receives `plan.md` and `proposal.md`. `portfolio-manager` receives those five files and writes `rating.md`. It is the only subagent allowed to emit a rating, and the rating is one of Buy, Overweight, Hold, Underweight, Sell, as the first line of `rating.md`, spelled that way.
 
 ### What the parent may do
 
 - Start the subagent named for the current step.
-- Paste the previous artifact unchanged.
-- Check that a market report contains the `SNAPSHOT <TICKER>` line and a fundamentals report contains the `FILINGS <TICKER>` line. Ticker is compared case-insensitively.
+- Pass the input and output paths for that step. A successful subagent reply is the output path only.
+- Read `market.md` and `fundamentals.md` and check that `market.md` contains the `SNAPSHOT <TICKER>` line and `fundamentals.md` contains the `FILINGS <TICKER>` line. Ticker is compared case-insensitively.
 - On a missing marker, send that same subagent back once, with the command's stderr. A second miss ends the desk.
-- After a valid portfolio-manager rating, run `desk record <TICKER> <RATING>`.
+- Read the first line of `rating.md` after the portfolio manager finishes. After a valid rating, run `desk record <TICKER> <RATING>`.
 
 ### What the parent must not do
 
-- Summarize a report before passing it on.
+- Paste, quote, or summarize a deliverable into the next subagent.
 - Write or edit a section, a price, or the rating.
 - Run `desk snapshot` or `desk filings` itself to fill a hole.
 - Ask a different subagent to cover a failed one.
 - Run `desk record` when any required report is missing or the rating is not one of the five words.
-- Run `desk score`, or paste a ledger row into any subagent.
+- Run `desk score`, or pass a ledger row into any subagent.
 
 A subagent that errors outright ends the desk. Nothing is recorded.
 
 ## Commands
 
-The console script is `desk`, implemented with the standard-library argument parser. Four subcommands. Success prints to stdout and exits 0. Failure prints the reason to stderr, prints no success marker, and exits 1.
+The console script is `desk`, implemented with the standard-library argument parser. Five subcommands. Success prints to stdout and exits 0. Failure prints the reason to stderr, prints no success marker, and exits 1.
 
-Every ticker is passed through `normalize_symbol` before a request. `XAUUSD+` resolves to `GC=F`, `0700.HK` to `0700.HK`, `600519.SH` to `600519.SS`. A ticker that fails `safe_ticker_component` is rejected before any network call.
+Every ticker is passed through `normalize_symbol` before a network request in snapshot and filings. `run-dir` validates with `safe_ticker_component` only. A ticker that fails `safe_ticker_component` is rejected before any network call or run directory is created.
+
+### `desk run-dir TICKER`
+
+Creates `.desk/<TICKER>/<YYYY-MM-DD>/` under the current working directory, using the local calendar date. If that directory already exists, it is deleted first, then recreated empty. Stdout is one line: the absolute path. Exit 1 when the ticker fails `safe_ticker_component`. No network.
 
 ### `desk snapshot TICKER`
 
@@ -285,10 +291,10 @@ After the refactor, `pytest` collects only the new files. A leftover test that i
 
 ## Subagent files
 
-Each file under `.cursor/agents/` states its inputs, the command it must run, the marker it must quote, and the actions forbidden in the table above. The market and fundamentals files include the exact command line. The news and sentiment files say web search is their source and `desk` is not. The portfolio-manager file lists the five ratings and says any other word is a failed report. None of the files tell the worker to read `~/.tradingagents/ledger.jsonl`.
+Each file under `.cursor/agents/` states its input paths, its output path, the command it must run when applicable, the marker it must quote, and the actions forbidden in the table above. Workers write deliverables to the path the parent names and read only the paths they were given. The market and fundamentals files include the exact command line. The news and sentiment files say web search is their source and `desk` is not. The portfolio-manager file lists the five ratings on the first line of `rating.md` and says any other word is a failed report. None of the files tell the worker to read `~/.tradingagents/ledger.jsonl`.
 
-`.cursor/skills/desk/SKILL.md` lists the order, the paste rule, the one retry, and the `desk record` call. It tells the parent to stop without recording when a second marker check fails.
+`.cursor/skills/desk/SKILL.md` lists the run directory, the file map, the dispatch order, path handoff, file-based marker and rating checks, the one retry, and the `desk record` call. It tells the parent to stop without recording when a second marker check fails.
 
 ## Done
 
-A fresh install exposes `desk` and not `tradingagents`. `desk snapshot`, `desk filings`, `desk record`, and `desk score` behave as specified, under the new tests, with no network. The twelve subagent files and the skill are in the tree. The deleted modules and the deleted tests are gone. `pytest` passes.
+A fresh install exposes `desk` and not `tradingagents`. `desk run-dir`, `desk snapshot`, `desk filings`, `desk record`, and `desk score` behave as specified, under the new tests, with no network. The twelve subagent files and the skill are in the tree. The deleted modules and the deleted tests are gone. `pytest` passes.
