@@ -1,0 +1,4 @@
+# DocGraph optional exclusions (gitignore syntax). Default indexing still respects .gitignore.
+
+# Test fixture markdown (not product docs)
+tests/**/fixtures/**/*.md

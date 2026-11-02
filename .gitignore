@@ -221,3 +221,8 @@ __marimo__/
 # Enterprise env file (secrets) and generated run reports
 .env.enterprise
 reports/
+
+# Local code/doc index caches (keep marker .gitignore under .codegraph/)
+.codegraph/*
+!.codegraph/.gitignore
+.docgraph/
