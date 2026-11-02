@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import pytest
 
 from desk.cli import main
 from desk.data.errors import VendorUnavailableError
@@ -204,3 +205,40 @@ def test_spy_fetch_error_still_writes_the_raw_return(monkeypatch, tmp_path, caps
     err = capsys.readouterr().err
     assert "ret_5" in err
     assert "spy down" in err
+
+
+def test_fifth_closed_session_skips_weekend(monkeypatch, tmp_path):
+    """Score through fetch_daily + drop_open_session, not a stubbed calendar series."""
+    anchor = date(2026, 3, 6)  # Friday
+    ledger = tmp_path / "ledger.jsonl"
+    row = _row(anchor=anchor, close=100.0)
+    _write(ledger, [row])
+    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+
+    nvda_dates = [
+        "2026-03-06",
+        "2026-03-09",
+        "2026-03-10",
+        "2026-03-11",
+        "2026-03-12",
+        "2026-03-13",
+    ]
+    nvda_closes = [100.0, 101.0, 102.0, 103.0, 104.0, 105.0]
+    nvda_frame = _ohlcv_frame(nvda_dates, nvda_closes)
+    spy_frame = _ohlcv_frame(nvda_dates, [400.0] * len(nvda_dates))
+
+    def fetch(canonical):
+        if canonical == "SPY":
+            return spy_frame
+        if canonical == "NVDA":
+            return nvda_frame
+        raise AssertionError(f"unexpected ticker {canonical}")
+
+    monkeypatch.setattr("desk.data.ledger.fetch_daily", fetch)
+    now = datetime(2026, 3, 16, 12, tzinfo=ZoneInfo("America/New_York"))
+    result = score_ledger(ledger=ledger, now=now)
+    assert result.code == 0
+    saved = json.loads(ledger.read_text(encoding="utf-8").strip())
+    assert saved["exit_date_5"] == "2026-03-13"
+    assert saved["ret_5"] == pytest.approx(0.05)
+    assert saved["ret_21"] is None

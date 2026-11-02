@@ -6,7 +6,7 @@ import pytest
 
 from desk.cli import main
 from desk.data.errors import NoMarketDataError
-from desk.data.prices import session_timezone, snapshot_text
+from desk.data.prices import INDICATORS, session_timezone, snapshot_text
 
 
 def _bars(dates, closes):
@@ -132,3 +132,44 @@ def test_nan_close_on_last_closed_session_is_not_an_older_anchor():
     now = datetime(2026, 11, 3, tzinfo=ZoneInfo("America/New_York"))
     with pytest.raises(NoMarketDataError):
         snapshot_text("NVDA", frame=frame, now=now)
+
+
+def _indicator_cell(text: str, name: str) -> str:
+    prefix = f"| {name} | "
+    for line in text.splitlines():
+        if line.startswith(prefix):
+            return line.split("|", 3)[2].strip()
+    raise AssertionError(f"missing indicator row for {name}")
+
+
+def test_short_series_prints_every_indicator_as_na():
+    frame = _bars(["2026-10-30", "2026-11-02"], [10.0, 187.25])
+    text = snapshot_text(
+        "NVDA",
+        frame=frame,
+        now=datetime(2026, 11, 3, tzinfo=ZoneInfo("America/New_York")),
+    )
+    assert text.splitlines()[0].startswith("SNAPSHOT ")
+    for name in INDICATORS:
+        assert _indicator_cell(text, name) == "N/A"
+
+
+def test_flat_sixty_session_series_computes_short_moving_averages():
+    dates = pd.bdate_range("2025-01-01", periods=60)
+    closes = [100.0] * len(dates)
+    frame = pd.DataFrame({
+        "Date": dates,
+        "Open": closes,
+        "High": [c + 1 for c in closes],
+        "Low": [c - 1 for c in closes],
+        "Close": closes,
+        "Volume": [1000] * len(closes),
+    })
+    text = snapshot_text(
+        "NVDA",
+        frame=frame,
+        now=datetime(2026, 11, 3, tzinfo=ZoneInfo("America/New_York")),
+    )
+    assert _indicator_cell(text, "close_10_ema") == "100.00"
+    assert _indicator_cell(text, "close_50_sma") == "100.00"
+    assert _indicator_cell(text, "close_200_sma") == "N/A"

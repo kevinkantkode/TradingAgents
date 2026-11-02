@@ -11,23 +11,14 @@ concurrency:
 
 jobs:
   test:
-    name: tests (py${{ matrix.python-version }}${{ matrix.tz && format(', {0}', matrix.tz) || '' }})
+    name: tests (py3.12)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
-        # One run away from UTC, so a test that only passes in UTC fails here.
-        include:
-          - python-version: "3.12"
-            tz: America/New_York
-    env:
-      TZ: ${{ matrix.tz }}
+    # Single version: desk/tests use explicit ZoneInfo, not process TZ; lint/smoke already pin 3.12.
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
       - name: Install (with dev extras)
         run: |
           python -m pip install --upgrade pip

@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
-from stockstats import wrap
+from stockstats import StockDataFrame
 
 from desk.data.errors import DeskError, NoMarketDataError, VendorUnavailableError
 from desk.data.symbols import resolve_ticker
@@ -18,6 +18,20 @@ INDICATORS = (
     "rsi", "boll", "boll_ub", "boll_lb",
     "macd", "macds", "macdh", "atr",
 )
+
+INDICATOR_MIN_BARS = {
+    "close_10_ema": 10,
+    "close_50_sma": 50,
+    "close_200_sma": 200,
+    "rsi": 14,
+    "boll": 20,
+    "boll_ub": 20,
+    "boll_lb": 20,
+    "macd": 26,
+    "macds": 26,
+    "macdh": 26,
+    "atr": 14,
+}
 
 
 def price_text(value: float) -> str:
@@ -104,14 +118,26 @@ def snapshot_text(ticker: str, *, frame: pd.DataFrame | None = None, now: dateti
         raise NoMarketDataError(f"no closed session for {canonical}")
     anchor_date = pd.Timestamp(latest["Date"]).strftime("%Y-%m-%d")
     close = price_text(float(latest["Close"]))
-    stock = wrap(closed.copy())
+    stats_input = closed.rename(columns={
+        "Date": "date",
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Volume": "volume",
+    })
+    stock = StockDataFrame.retype(stats_input)
     indicator_lines = []
     for name in INDICATORS:
-        try:
-            value = stock.iloc[-1][name]
-            rendered = "N/A" if pd.isna(value) else price_text(float(value))
-        except Exception as exc:
-            rendered = f"N/A ({type(exc).__name__})"
+        need = INDICATOR_MIN_BARS[name]
+        if len(closed) < need:
+            rendered = "N/A"
+        else:
+            try:
+                value = stock[name].iloc[-1]
+                rendered = "N/A" if pd.isna(value) else price_text(float(value))
+            except Exception as exc:
+                rendered = f"N/A ({type(exc).__name__})"
         indicator_lines.append(f"| {name} | {rendered} |")
     recent = closed.tail(30)
     recent_lines = [

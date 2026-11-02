@@ -1,8 +1,10 @@
 import json
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import pytest
 
 from desk.cli import main
 from desk.data.prices import snapshot_text
@@ -81,3 +83,22 @@ def test_two_records_are_two_lines(monkeypatch, tmp_path):
     assert main(["record", "NVDA", "Sell"]) == 0
     lines = ledger.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 2
+
+
+def test_failed_replace_leaves_ledger_bytes_unchanged(monkeypatch, tmp_path):
+    _patch_snapshot(monkeypatch)
+    ledger = tmp_path / "ledger.jsonl"
+    seed = '{"id":"seed-row"}\n'
+    ledger.write_text(seed, encoding="utf-8")
+    monkeypatch.setattr("desk.data.ledger.LEDGER", ledger)
+    real_replace = Path.replace
+
+    def fail_on_ledger_replace(self, target, *args, **kwargs):
+        if target == ledger:
+            raise OSError("replace failed")
+        return real_replace(self, target, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "replace", fail_on_ledger_replace)
+    with pytest.raises(OSError, match="replace failed"):
+        main(["record", "NVDA", "Hold"])
+    assert ledger.read_text(encoding="utf-8") == seed
