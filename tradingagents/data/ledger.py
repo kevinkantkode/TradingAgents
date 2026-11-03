@@ -12,7 +12,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from tradingagents.data.errors import TradingAgentsError
-from tradingagents.data.prices import drop_open_session, fetch_daily, session_timezone, snapshot_text
+from tradingagents.data.prices import (
+    drop_open_session,
+    fetch_daily,
+    session_timezone,
+    snapshot_text,
+)
 
 HORIZONS = (5, 21)
 

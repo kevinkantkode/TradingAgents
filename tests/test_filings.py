@@ -4,7 +4,13 @@ import requests
 
 from tradingagents.cli import main
 from tradingagents.data.errors import TradingAgentsError, VendorUnavailableError
-from tradingagents.data.filings import Statements, YahooFilings, _latest_fact, filings_text, load_filings
+from tradingagents.data.filings import (
+    Statements,
+    YahooFilings,
+    _latest_fact,
+    filings_text,
+    load_filings,
+)
 
 
 def _frame():

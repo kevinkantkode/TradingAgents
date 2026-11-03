@@ -10,7 +10,7 @@ import pandas as pd
 import yfinance as yf
 from stockstats import StockDataFrame
 
-from tradingagents.data.errors import TradingAgentsError, NoMarketDataError, VendorUnavailableError
+from tradingagents.data.errors import NoMarketDataError, TradingAgentsError, VendorUnavailableError
 from tradingagents.data.symbols import resolve_ticker
 
 INDICATORS = (

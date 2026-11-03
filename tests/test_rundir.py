@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 
 from tradingagents.cli import main
 from tradingagents.data.rundir import prepare_run_dir, ticker_path_segment
