@@ -32,16 +32,26 @@ def test_assert_run_result_rejects_a_bad_first_line(tmp_path: Path):
         assert_run_result(tmp_path)
 
 
-def test_workflow_is_dispatch_only_and_publishes_the_run_folder():
+def test_workflow_is_dispatch_only_and_opens_a_pull_request():
     text = Path(".github/workflows/tradingagents.yml").read_text(encoding="utf-8")
     assert "workflow_dispatch:" in text
-    assert "pull_request" not in text
+    assert "pull_request:" not in text
     assert "schedule:" not in text
     assert "ROBINHOOD" not in text.upper()
     assert "CURSOR_API_KEY" in text
-    assert "contents: read" in text
-    assert "name: tradingagents" in text
+    assert "contents: write" in text
+    assert "pull-requests: write" in text
+    assert "actions: write" in text
+    assert "persist-credentials: false" in text
+    assert 'GITHUB_TOKEN: ""' in text
+    assert "new_run_directory" in text
+    assert "tradingagents/" in text
+    assert "gh pr create" in text
+    assert "if: failure()" in text
+    assert "HEAD:main" not in text
+    assert "git push origin main" not in text
     assert "ledger.jsonl" not in text
+    assert "name: tradingagents" in text
 
 
 def test_new_run_directory_returns_the_one_new_parent(tmp_path: Path):
