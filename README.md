@@ -10,7 +10,7 @@ pip install -e ".[dev]"
 
 ## Commands
 
-`tradingagents run-dir TICKER` creates an empty `.tradingagents/<TICKER>/<local-date>/` run folder and prints its absolute path. A same-day rerun wipes that folder first.
+`tradingagents run-dir TICKER` creates an empty `.tradingagents/<TICKER>/<local-date>/<HHMMSS>/` run folder and prints its absolute path. A second run in that same second uses `HHMMSS-2`, then `HHMMSS-3`, through `HHMMSS-99`. An older run is left in place.
 
 `tradingagents snapshot TICKER` prints the last closed session, its indicators, and a `SNAPSHOT` line.
 
@@ -24,4 +24,4 @@ Set `SEC_EDGAR_USER_AGENT` to a name and email before `tradingagents filings` ca
 
 ## Run
 
-Invoke the `tradingagents` skill with a ticker. The parent only starts subagents and passes deliverable paths under `.tradingagents/<TICKER>/<date>/`. It does not write the rating. Scores are not shown to the next run.
+Invoke the `tradingagents` skill with a ticker. The parent only starts subagents and passes deliverable paths under `.tradingagents/<TICKER>/<date>/<HHMMSS>/`. It does not write the rating. Scores are not shown to the next run.

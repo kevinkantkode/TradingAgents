@@ -1,9 +1,8 @@
-"""Prepare the gitignored directory for one TradingAgents run."""
+"""Prepare one run directory."""
 
 from __future__ import annotations
 
-import shutil
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 from tradingagents.data.errors import TradingAgentsError
@@ -20,11 +19,29 @@ def ticker_path_segment(raw: str) -> str:
     return "".join(c.upper() if c.isascii() and c.isalpha() else c for c in stripped)
 
 
-def prepare_run_dir(ticker: str, *, base: Path | None = None) -> Path:
-    """Create ``.tradingagents/<ticker>/<local-date>/`` under *base* (default cwd), wiping if present."""
+def prepare_run_dir(
+    ticker: str,
+    *,
+    base: Path | None = None,
+    now: datetime | None = None,
+) -> Path:
+    """Create ``.tradingagents/<ticker>/<local-date>/<HHMMSS>/`` under *base*.
+
+    A provided *now* is read as its wall time, with no timezone conversion.
+    An existing directory is left in place. The next free suffix is ``-2``
+    through ``-99``.
+    """
     segment = ticker_path_segment(ticker)
-    run_dir = (base or Path.cwd()).resolve() / ".tradingagents" / segment / date.today().isoformat()
-    if run_dir.exists():
-        shutil.rmtree(run_dir)
-    run_dir.mkdir(parents=True)
-    return run_dir.resolve()
+    moment = now if now is not None else datetime.now()
+    day = moment.date().isoformat()
+    stamp = f"{moment.hour:02d}{moment.minute:02d}{moment.second:02d}"
+    root = (base or Path.cwd()).resolve() / ".tradingagents" / segment / day
+    names = [stamp, *[f"{stamp}-{n}" for n in range(2, 100)]]
+    for name in names:
+        run_dir = root / name
+        if not run_dir.exists():
+            run_dir.mkdir(parents=True)
+            return run_dir.resolve()
+    raise TradingAgentsError(
+        f"no free run directory for {segment} on {day} from {stamp} through {stamp}-99"
+    )

@@ -1,4 +1,4 @@
-# One ticker, dispatched by hand. The artifact is <TICKER>/<date>/ from the run directory.
+# One ticker, dispatched by hand. A passed run opens a pull request.
 name: tradingagents
 
 on:
@@ -10,7 +10,8 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   actions: write
 
 concurrency:
@@ -24,6 +25,9 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
 
       - uses: actions/setup-python@v7
         with:
@@ -46,6 +50,16 @@ jobs:
             exit 1
           fi
 
+      - name: Record existing ratings
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tradingagents"
+          if [ -d .tradingagents ]; then
+            find .tradingagents -name rating.md -type f | sort > "$RUNNER_TEMP/tradingagents/before.txt"
+          else
+            : > "$RUNNER_TEMP/tradingagents/before.txt"
+          fi
+
       - name: Run
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
@@ -62,25 +76,64 @@ jobs:
 
       - name: Check rating
         run: |
-          python -c 'from pathlib import Path; from tradingagents.run_result import assert_run_result; print(assert_run_result(Path(".tradingagents")))'
+          python << 'PY'
+          import os
+          from pathlib import Path
+          from tradingagents.run_result import assert_run_result, branch_ticker, new_run_directory
 
-      - name: Stage artifact
-        if: always()
+          meta = Path(os.environ["RUNNER_TEMP"]) / "tradingagents"
+          before = {Path(line) for line in (meta / "before.txt").read_text(encoding="utf-8").splitlines() if line.strip()}
+          root = Path(".tradingagents")
+          after = set(root.rglob("rating.md")) if root.is_dir() else set()
+          run_dir = new_run_directory(before, after)
+          rating = assert_run_result(run_dir)
+          rel = run_dir.resolve().relative_to(Path.cwd().resolve())
+          if len(rel.parts) != 4 or rel.parts[0] != ".tradingagents":
+              raise SystemExit(f"unexpected run path: {rel}")
+          ticker, day, time = rel.parts[1], rel.parts[2], rel.parts[3]
+          (meta / "run_dir.txt").write_text(str(run_dir.resolve()), encoding="utf-8")
+          (meta / "rel.txt").write_text(rel.as_posix(), encoding="utf-8")
+          (meta / "branch.txt").write_text(f"tradingagents/{branch_ticker(ticker)}/{day}-{time}", encoding="utf-8")
+          (meta / "title.txt").write_text(f"tradingagents: {ticker} {day} {time}", encoding="utf-8")
+          (meta / "body.txt").write_text(f"{rating}\n\n{rel.as_posix()}/\n", encoding="utf-8")
+          print(rating)
+          PY
+
+      - name: Keep the run directory
+        if: success()
         run: |
           set -euo pipefail
-          stage="${RUNNER_TEMP}/artifact"
-          rm -rf "$stage"
-          mkdir -p "$stage"
-          if [ -d .tradingagents ]; then
-            cp -a .tradingagents/. "$stage/"
-          fi
+          run_dir="$(cat "$RUNNER_TEMP/tradingagents/run_dir.txt")"
+          rm -rf "$RUNNER_TEMP/tradingagents/saved"
+          mkdir -p "$RUNNER_TEMP/tradingagents/saved/run"
+          cp -a "$run_dir/." "$RUNNER_TEMP/tradingagents/saved/run/"
 
-      - name: Upload artifact
-        if: always()
+      - name: Open pull request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          meta="$RUNNER_TEMP/tradingagents"
+          rel="$(cat "$meta/rel.txt")"
+          branch="$(cat "$meta/branch.txt")"
+          title="$(cat "$meta/title.txt")"
+          git fetch origin main
+          git checkout --force -B "$branch" origin/main
+          git reset --hard origin/main
+          git clean -fd
+          mkdir -p "$rel"
+          cp -a "$meta/saved/run/." "$rel/"
+          git add -- "$rel"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "$title"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${branch}"
+          gh pr create --base main --head "$branch" --title "$title" --body-file "$meta/body.txt"
+
+      - name: Upload failed run
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: tradingagents
-          path: ${{ runner.temp }}/artifact
-          include-hidden-files: true
-          if-no-files-found: warn
+          name: tradingagents-run
+          path: ${{ runner.temp }}/tradingagents/saved/run
+          if-no-files-found: ignore
           retention-days: 90

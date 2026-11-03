@@ -26,6 +26,9 @@ def test_marker_uses_the_last_closed_row_and_matches_the_table(monkeypatch, caps
     first = text.splitlines()[0]
     assert first == "SNAPSHOT NVDA 2026-11-02 187.25"
     assert "187.25" in text.split("SNAPSHOT", 1)[1]
+    assert "| Date | Close |" in text
+    assert "|---|---:|" in text
+    assert "| 2026-11-02 | 187.25 |" in text
 
 
 def test_todays_partial_bar_is_not_the_anchor():

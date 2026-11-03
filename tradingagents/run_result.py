@@ -9,6 +9,10 @@ from tradingagents.data.ledger import RATINGS
 from tradingagents.data.symbols import safe_ticker_component
 
 
+def branch_ticker(ticker: str) -> str:
+    return ticker.encode("ascii").hex()
+
+
 def dispatcher_prompt(ticker: str) -> str:
     safe = safe_ticker_component(ticker.strip())
     return (
@@ -30,3 +34,11 @@ def assert_run_result(run_root: Path) -> str:
     if not lines or lines[0] not in RATINGS:
         raise TradingAgentsError(f"rating first line is not a rating: {lines[:1]!r}")
     return lines[0]
+
+
+def new_run_directory(before: set[Path], after: set[Path]) -> Path:
+    before_resolved = {path.resolve() for path in before}
+    new = sorted(path.resolve() for path in after if path.resolve() not in before_resolved)
+    if len(new) != 1:
+        raise TradingAgentsError(f"expected one new rating.md, found {len(new)}: {new}")
+    return new[0].parent

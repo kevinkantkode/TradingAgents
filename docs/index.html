@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TradingAgents</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+<style>
+  body { font: 16px/1.45 system-ui, sans-serif; margin: 0; color: #1a1a1a; }
+  main { display: grid; grid-template-columns: 16rem 1fr; min-height: 100vh; }
+  nav { border-right: 1px solid #ddd; padding: 1rem; }
+  article { padding: 1rem 1.5rem 3rem; max-width: 48rem; }
+  button { display: block; width: 100%; text-align: left; margin: 0 0 0.5rem; padding: 0.4rem 0.5rem; background: #fff; }
+  .status { color: #555; }
+  svg { width: 100%; height: auto; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #ccc; padding: 0.2rem 0.4rem; }
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; }
+    nav { border-right: 0; border-bottom: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <nav id="runs"><p class="status">Loading runs.</p></nav>
+  <article id="run"></article>
+</main>
+<script>
+const REPO = "kevinkantkode/TradingAgents";
+const BRANCH = "main";
+const NOTES = [
+  "market.md", "fundamentals.md", "news.md", "sentiment.md",
+  "bull.md", "bear.md", "omissions.md", "plan.md", "proposal.md",
+  "aggressive.md", "conservative.md", "neutral.md", "rating.md"
+];
+const RUN_RE = /^\.tradingagents\/([^/]+)\/(\d{4}-\d{2}-\d{2})\/(\d{6}(?:-(?:[2-9]|[1-9]\d))?)\/rating\.md$/;
+const SVG = "http://www.w3.org/2000/svg";
+let view = 0;
+
+function rawUrl(path) {
+  return "https://raw.githubusercontent.com/" + REPO + "/" + BRANCH + "/"
+    + path.split("/").map(encodeURIComponent).join("/");
+}
+
+function parseRun(path) {
+  const match = RUN_RE.exec(path);
+  if (!match) return null;
+  return { path: path, ticker: match[1], date: match[2], time: match[3] };
+}
+
+function timeRank(time) {
+  const match = /^(\d{6})(?:-(\d+))?$/.exec(time);
+  return [Number(match[1]), match[2] ? Number(match[2]) : 0];
+}
+
+function compareRuns(a, b) {
+  if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+  const [aStamp, aSuffix] = timeRank(a.time);
+  const [bStamp, bSuffix] = timeRank(b.time);
+  if (aStamp !== bStamp) return bStamp - aStamp;
+  return bSuffix - aSuffix;
+}
+
+function splitRow(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|")) return null;
+  const cells = trimmed.split("|").slice(1, -1).map(function (cell) { return cell.trim(); });
+  return cells.length >= 2 ? cells : null;
+}
+
+function closesFromMarkdown(text) {
+  const lines = text.split(/\r?\n/);
+  let start = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    const cells = splitRow(lines[i]);
+    if (cells && cells[0] === "Date" && cells[1] === "Close") {
+      start = i + 1;
+      break;
+    }
+  }
+  if (start < 0) return [];
+  const points = [];
+  for (let i = start; i < lines.length; i += 1) {
+    if (lines[i].trim() === "") break;
+    const cells = splitRow(lines[i]);
+    if (!cells) break;
+    if (/^:?-+:?$/.test(cells[0])) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cells[0])) continue;
+    const close = Number(cells[1]);
+    if (!Number.isFinite(close)) continue;
+    points.push({ date: cells[0], close: close });
+  }
+  return points;
+}
+
+function drawChart(host, points) {
+  host.replaceChildren();
+  if (points.length < 2) return;
+  const width = 640;
+  const height = 220;
+  const padL = 72;
+  const padR = 16;
+  const padT = 20;
+  const padB = 28;
+  const closes = points.map(function (point) { return point.close; });
+  let min = Math.min.apply(null, closes);
+  let max = Math.max.apply(null, closes);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+  const xOf = function (index) {
+    return padL + (index / (points.length - 1)) * (width - padL - padR);
+  };
+  const yOf = function (close) {
+    return padT + (1 - (close - min) / (max - min)) * (height - padT - padB);
+  };
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+  svg.setAttribute("role", "img");
+  const line = document.createElementNS(SVG, "polyline");
+  line.setAttribute("fill", "none");
+  line.setAttribute("stroke", "currentColor");
+  line.setAttribute("stroke-width", "2");
+  line.setAttribute("points", points.map(function (point, index) {
+    return xOf(index).toFixed(1) + "," + yOf(point.close).toFixed(1);
+  }).join(" "));
+  svg.append(line);
+  const low = closes.indexOf(Math.min.apply(null, closes));
+  const high = closes.indexOf(Math.max.apply(null, closes));
+  const labels = [
+    [0, points[0].date + " " + points[0].close],
+    [points.length - 1, points[points.length - 1].date + " " + points[points.length - 1].close],
+    [low, "low " + points[low].close],
+    [high, "high " + points[high].close]
+  ];
+  const seen = new Set();
+  labels.forEach(function (label) {
+    if (seen.has(label[0])) return;
+    seen.add(label[0]);
+    const text = document.createElementNS(SVG, "text");
+    text.setAttribute("x", xOf(label[0]).toFixed(1));
+    text.setAttribute("y", (yOf(points[label[0]].close) - 6).toFixed(1));
+    text.setAttribute("font-size", "11");
+    text.textContent = label[1];
+    svg.append(text);
+  });
+  host.append(svg);
+}
+
+function renderMarkdown(text) {
+  return DOMPurify.sanitize(marked.parse(text));
+}
+
+async function showRun(run) {
+  const token = ++view;
+  const article = document.getElementById("run");
+  article.replaceChildren();
+  const heading = document.createElement("h1");
+  heading.textContent = run.ticker + " " + run.date + " " + run.time;
+  const chart = document.createElement("div");
+  article.append(heading, chart);
+  const dir = run.path.slice(0, -"rating.md".length);
+  for (const name of NOTES) {
+    if (token !== view) return;
+    const section = document.createElement("section");
+    const label = document.createElement("h2");
+    label.textContent = name;
+    section.append(label);
+    article.append(section);
+    let response;
+    try {
+      response = await fetch(rawUrl(dir + name));
+    } catch (error) {
+      const failed = document.createElement("p");
+      failed.textContent = name + " failed";
+      section.append(failed);
+      continue;
+    }
+    if (token !== view) return;
+    if (!response.ok) {
+      const status = document.createElement("p");
+      status.textContent = name + " HTTP " + response.status;
+      section.append(status);
+      continue;
+    }
+    const text = await response.text();
+    if (name === "market.md") drawChart(chart, closesFromMarkdown(text));
+    if (name === "rating.md") {
+      const first = text.split(/\r?\n/, 1)[0];
+      if (first) heading.textContent = first;
+    }
+    const body = document.createElement("div");
+    try {
+      body.innerHTML = renderMarkdown(text);
+      section.append(body);
+    } catch (error) {
+      const failed = document.createElement("p");
+      failed.textContent = name + " failed";
+      section.append(failed);
+    }
+  }
+}
+
+function showCurrent(runs) {
+  const raw = location.hash.replace(/^#/, "");
+  const parts = raw ? raw.split("/").map(decodeURIComponent) : [];
+  const run = parts.length === 3
+    ? runs.find(function (item) {
+      return item.ticker === parts[0] && item.date === parts[1] && item.time === parts[2];
+    })
+    : null;
+  if (run) showRun(run);
+}
+
+async function loadRuns() {
+  const nav = document.getElementById("runs");
+  let response;
+  try {
+    response = await fetch("https://api.github.com/repos/" + REPO + "/git/trees/" + BRANCH + "?recursive=1");
+  } catch (error) {
+    nav.replaceChildren();
+    const failed = document.createElement("p");
+    failed.textContent = "The file list failed.";
+    nav.append(failed);
+    return;
+  }
+  nav.replaceChildren();
+  if (!response.ok) {
+    const status = document.createElement("p");
+    status.textContent = "The file list failed: HTTP " + response.status;
+    nav.append(status);
+    return;
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    nav.replaceChildren();
+    const failed = document.createElement("p");
+    failed.textContent = "The file list failed.";
+    nav.append(failed);
+    return;
+  }
+  if (payload.truncated) {
+    const notice = document.createElement("p");
+    notice.textContent = "The file list was truncated.";
+    nav.append(notice);
+  }
+  const runs = (payload.tree || []).map(function (entry) {
+    return parseRun(entry.path || "");
+  }).filter(Boolean).sort(compareRuns);
+  if (runs.length === 0) {
+    const empty = document.createElement("p");
+    empty.textContent = "There are no runs.";
+    nav.append(empty);
+    return;
+  }
+  runs.forEach(function (run) {
+    const button = document.createElement("button");
+    button.type = "button";
+    const title = document.createElement("div");
+    title.textContent = run.ticker + " " + run.date + " " + run.time;
+    const rating = document.createElement("div");
+    rating.className = "status";
+    button.append(title, rating);
+    button.addEventListener("click", function () {
+      location.hash = [run.ticker, run.date, run.time].map(encodeURIComponent).join("/");
+    });
+    nav.append(button);
+    fetch(rawUrl(run.path)).then(function (note) {
+      if (!note.ok) {
+        rating.textContent = "HTTP " + note.status;
+        return null;
+      }
+      return note.text();
+    }).then(function (text) {
+      if (!text) return;
+      const first = text.split(/\r?\n/, 1)[0];
+      if (first) rating.textContent = first;
+    }).catch(function () {
+      rating.textContent = "failed";
+    });
+  });
+  window.addEventListener("hashchange", function () { showCurrent(runs); });
+  showCurrent(runs);
+}
+
+loadRuns();
+</script>
+</body>
+</html>
