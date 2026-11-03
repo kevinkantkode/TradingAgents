@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 
 from tradingagents.data.errors import TradingAgentsError
-from tradingagents.run_result import assert_run_result, branch_ticker, dispatcher_prompt, new_run_directory
+from tradingagents.run_result import (
+    assert_run_result,
+    branch_ticker,
+    dispatcher_prompt,
+    new_run_directory,
+)
 
 
 def test_dispatcher_prompt_embeds_the_stripped_ticker():
