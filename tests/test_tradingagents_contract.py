@@ -96,3 +96,14 @@ def test_tradingagents_skill_lists_analysts_record_and_score_rule():
     assert "Do not pass `omissions.md`" in text
     for word in ("Buy", "Overweight", "Hold", "Underweight", "Sell"):
         assert word in text
+
+
+def test_tradingagents_skill_uses_a_unique_run_directory():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "<local-date>/<HHMMSS>/" in text
+    assert "wipe" not in text.lower()
+
+
+def test_run_directory_is_not_gitignored():
+    text = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert ".tradingagents/" not in text

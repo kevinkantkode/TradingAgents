@@ -227,5 +227,3 @@ reports/
 !.codegraph/.gitignore
 .docgraph/
 
-# Cursor desk run deliverables (local-date folders under .tradingagents/<TICKER>/)
-.tradingagents/

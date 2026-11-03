@@ -13,7 +13,7 @@ The user names one ticker. You are the dispatcher. You do not write a section, a
 
 ## Run directory
 
-Before step 1, run `tradingagents run-dir TICKER` with the user's ticker. Stdout is one line: the absolute path to an empty run directory (`.tradingagents/<TICKER>/<local-date>/` under the current working directory). Exit non-zero stops the run. All deliverable paths below are files in that directory.
+Before step 1, run `tradingagents run-dir TICKER` with the user's ticker. Stdout is one line: the absolute path to an empty run directory (`.tradingagents/<TICKER>/<local-date>/<HHMMSS>/` under the current working directory). A taken name gets the next suffix, `-2` through `-99`. Use the printed path. Exit non-zero stops the run. All deliverable paths below are files in that directory.
 
 ## Dispatch
 

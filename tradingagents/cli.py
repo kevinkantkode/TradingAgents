@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     scr.set_defaults(func=_score)
     run = sub.add_parser(
         "run-dir",
-        help="create an empty .tradingagents/<TICKER>/<local-date>/ run directory",
+        help="create an empty .tradingagents/<TICKER>/<local-date>/<HHMMSS>/ run directory",
     )
     run.add_argument("ticker")
     run.set_defaults(func=_run_dir)
