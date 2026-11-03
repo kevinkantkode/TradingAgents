@@ -24,4 +24,4 @@ Set `SEC_EDGAR_USER_AGENT` to a name and email before `tradingagents filings` ca
 
 ## Run
 
-Invoke the `tradingagents` skill with a ticker. The parent only starts subagents and passes deliverable paths under `.tradingagents/<TICKER>/<date>/`. It does not write the rating. Scores are not shown to the next run.
+Invoke the `tradingagents` skill with a ticker. The parent only starts subagents and passes deliverable paths under `.tradingagents/<TICKER>/<date>/<HHMMSS>/`. It does not write the rating. Scores are not shown to the next run.

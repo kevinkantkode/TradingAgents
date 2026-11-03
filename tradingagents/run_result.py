@@ -9,6 +9,10 @@ from tradingagents.data.ledger import RATINGS
 from tradingagents.data.symbols import safe_ticker_component
 
 
+def branch_ticker(ticker: str) -> str:
+    return ticker.encode("ascii").hex()
+
+
 def dispatcher_prompt(ticker: str) -> str:
     safe = safe_ticker_component(ticker.strip())
     return (

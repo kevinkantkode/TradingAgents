@@ -1,9 +1,10 @@
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from tradingagents.data.errors import TradingAgentsError
-from tradingagents.run_result import assert_run_result, dispatcher_prompt, new_run_directory
+from tradingagents.run_result import assert_run_result, branch_ticker, dispatcher_prompt, new_run_directory
 
 
 def test_dispatcher_prompt_embeds_the_stripped_ticker():
@@ -30,6 +31,16 @@ def test_assert_run_result_rejects_a_bad_first_line(tmp_path: Path):
     (day / "rating.md").write_text("Maybe\n", encoding="utf-8")
     with pytest.raises(TradingAgentsError, match="not a rating"):
         assert_run_result(tmp_path)
+
+
+def test_branch_ticker_is_git_safe_and_distinct():
+    assert branch_ticker("^GSPC") != branch_ticker("GSPC")
+    for ticker in ("^GSPC", "A..B"):
+        segment = branch_ticker(ticker)
+        assert "^" not in segment
+        assert ".." not in segment
+        ref = f"refs/heads/tradingagents/{segment}/2026-11-03-120000"
+        subprocess.run(["git", "check-ref-format", ref], check=True)
 
 
 def test_workflow_is_dispatch_only_and_opens_a_pull_request():

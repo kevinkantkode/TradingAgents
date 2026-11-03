@@ -79,7 +79,7 @@ jobs:
           python << 'PY'
           import os
           from pathlib import Path
-          from tradingagents.run_result import assert_run_result, new_run_directory
+          from tradingagents.run_result import assert_run_result, branch_ticker, new_run_directory
 
           meta = Path(os.environ["RUNNER_TEMP"]) / "tradingagents"
           before = {Path(line) for line in (meta / "before.txt").read_text(encoding="utf-8").splitlines() if line.strip()}
@@ -93,7 +93,7 @@ jobs:
           ticker, day, time = rel.parts[1], rel.parts[2], rel.parts[3]
           (meta / "run_dir.txt").write_text(str(run_dir.resolve()), encoding="utf-8")
           (meta / "rel.txt").write_text(rel.as_posix(), encoding="utf-8")
-          (meta / "branch.txt").write_text(f"tradingagents/{ticker}/{day}-{time}", encoding="utf-8")
+          (meta / "branch.txt").write_text(f"tradingagents/{branch_ticker(ticker)}/{day}-{time}", encoding="utf-8")
           (meta / "title.txt").write_text(f"tradingagents: {ticker} {day} {time}", encoding="utf-8")
           (meta / "body.txt").write_text(f"{rating}\n\n{rel.as_posix()}/\n", encoding="utf-8")
           print(rating)

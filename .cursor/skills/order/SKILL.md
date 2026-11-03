@@ -6,13 +6,13 @@ disable-model-invocation: true
 
 # Order
 
-The user names a run directory, `.tradingagents/<TICKER>/<date>/`. Suggest one equity order from the rating and the account, and say that amount in the chat. Do not write a file. Do not re-read the debate. Do not dispatch the research skill. Do not run `tradingagents`.
+The user names a run directory, `.tradingagents/<TICKER>/<date>/<HHMMSS>/`. Suggest one equity order from the rating and the account, and say that amount in the chat. Do not write a file. Do not re-read the debate. Do not dispatch the research skill. Do not run `tradingagents`.
 
 ## Stop
 
 If `get_accounts` is not available, stop. Say the broker tools are not connected. Do not invent a fill.
 
-Read the first line of `rating.md` in that directory. It must be exactly one of Buy, Overweight, Hold, Underweight, or Sell. Any other first line stops the run. Do not open the other files in the directory.
+Read the first line of `rating.md` in that time directory. It must be exactly one of Buy, Overweight, Hold, Underweight, or Sell. Any other first line stops the run. Do not open the other files in the directory.
 
 The symbol is the ticker folder name. Call only `get_accounts`, `get_portfolio`, `get_equity_positions`, `get_equity_tradability`, `get_equity_orders`, `review_equity_order`, `place_equity_order`, and `get_trade_approvals`.
 
