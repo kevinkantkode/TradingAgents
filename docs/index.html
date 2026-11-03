@@ -193,8 +193,14 @@ async function showRun(run) {
       if (first) heading.textContent = first;
     }
     const body = document.createElement("div");
-    body.innerHTML = renderMarkdown(text);
-    section.append(body);
+    try {
+      body.innerHTML = renderMarkdown(text);
+      section.append(body);
+    } catch (error) {
+      const failed = document.createElement("p");
+      failed.textContent = name + " failed";
+      section.append(failed);
+    }
   }
 }
 
@@ -211,7 +217,16 @@ function showCurrent(runs) {
 
 async function loadRuns() {
   const nav = document.getElementById("runs");
-  const response = await fetch("https://api.github.com/repos/" + REPO + "/git/trees/" + BRANCH + "?recursive=1");
+  let response;
+  try {
+    response = await fetch("https://api.github.com/repos/" + REPO + "/git/trees/" + BRANCH + "?recursive=1");
+  } catch (error) {
+    nav.replaceChildren();
+    const failed = document.createElement("p");
+    failed.textContent = "The file list failed.";
+    nav.append(failed);
+    return;
+  }
   nav.replaceChildren();
   if (!response.ok) {
     const status = document.createElement("p");
@@ -219,7 +234,16 @@ async function loadRuns() {
     nav.append(status);
     return;
   }
-  const payload = await response.json();
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    nav.replaceChildren();
+    const failed = document.createElement("p");
+    failed.textContent = "The file list failed.";
+    nav.append(failed);
+    return;
+  }
   if (payload.truncated) {
     const notice = document.createElement("p");
     notice.textContent = "The file list was truncated.";
