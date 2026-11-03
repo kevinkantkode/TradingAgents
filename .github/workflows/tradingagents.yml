@@ -1,0 +1,86 @@
+# One ticker, dispatched by hand. The artifact is <TICKER>/<date>/ from the run directory.
+name: tradingagents
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: Ticker
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: tradingagents-${{ inputs.ticker }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: run
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install tradingagents
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          if [ -x "$HOME/.cursor/bin/agent" ]; then
+            echo "$HOME/.cursor/bin" >> "$GITHUB_PATH"
+          elif [ -x "$HOME/.local/bin/agent" ]; then
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          else
+            echo "agent binary not found after install" >&2
+            exit 1
+          fi
+
+      - name: Run
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          TICKER: ${{ inputs.ticker }}
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+        run: |
+          set -euo pipefail
+          if [ -f .cursor/mcp.json ]; then
+            mv .cursor/mcp.json .cursor/mcp.json.off
+          fi
+          python -c 'import os; from pathlib import Path; from tradingagents.run_result import dispatcher_prompt; Path("run-prompt.txt").write_text(dispatcher_prompt(os.environ["TICKER"]), encoding="utf-8")'
+          agent -p --force --model composer-2.5 --output-format text "$(cat run-prompt.txt)"
+
+      - name: Check rating
+        run: |
+          python -c 'from pathlib import Path; from tradingagents.run_result import assert_run_result; print(assert_run_result(Path(".tradingagents")))'
+
+      - name: Stage artifact
+        if: always()
+        run: |
+          set -euo pipefail
+          stage="${RUNNER_TEMP}/artifact"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+          if [ -d .tradingagents ]; then
+            cp -a .tradingagents/. "$stage/"
+          fi
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tradingagents
+          path: ${{ runner.temp }}/artifact
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90
